@@ -40,11 +40,10 @@ public partial struct BeeMovementJob : IJobEntity
     
         float distance = math.length(direction);
         
-        if(distance < movementData.stopRadius) 
+        if(distance <  movementData.stopRadius) 
         { 
            
             movementEnabled.ValueRW = false; 
-            
             return; 
         }
         

@@ -185,6 +185,7 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
+  m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
 --- !u!33 &1605363068
 MeshFilter:
@@ -226,6 +227,7 @@ MonoBehaviour:
   wobbleFrequency: 3
   wobbleAmplitude: 5
   randomOffSet: 0
+  stopRadius: 2
 --- !u!1 &2019658334
 GameObject:
   m_ObjectHideFlags: 0
