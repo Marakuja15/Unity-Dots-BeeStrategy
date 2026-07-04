@@ -1,0 +1,21 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/Scripts/UI/AdderUI.uss?fileID=7433441132597879392&amp;guid=072f6cc3cae78ea4b9fd85bdef7907c1&amp;type=3#AdderUI" />
+    <ui:VisualElement class="container">
+        
+        <ui:VisualElement class="controls-row">
+            <ui:IntegerField label="Amount:" name="number-input" class="input-field">
+                <Bindings>
+                    <ui:DataBinding property="value" data-source-path="numOfEntities" binding-mode="TwoWay" />
+                </Bindings>
+            </ui:IntegerField>
+            <ui:Button text="Add" name="add-button" class="action-btn add-btn" />
+            <ui:Button text="Remove" name="remove-button" class="action-btn remove-btn" />
+        </ui:VisualElement>
+
+        <ui:VisualElement class="stats-row">
+            <ui:Label text="Units: 0" name="entity-count-label" class="stat-label" />
+            <ui:Label text="FPS: 0" name="fps-label" class="stat-label" />
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>
