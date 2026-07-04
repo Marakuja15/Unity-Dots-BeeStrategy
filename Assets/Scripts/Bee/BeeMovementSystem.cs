@@ -33,7 +33,7 @@ public partial struct BeeMovementJob : IJobEntity
         ref BeeMovementData movementData, 
         EnabledRefRW<BeeMovementData> movementEnabled)
     {
-        
+       
         float3 start = transform.Position;
         float3 destination = movementData.moveLocation; 
         float3 direction = destination - start;
