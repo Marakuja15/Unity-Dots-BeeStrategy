@@ -30,13 +30,16 @@ public partial struct FlowerJob : IJobEntity
 
   void Execute(
     ref FlowerData flower,
-    EnabledRefRW<FlowerData> flowerEnabled
+    EnabledRefRW<FlowerData> flowerEnabled,
+    EnabledRefRW<GrowthData> growthEnabled
   )
    
     {
         if(flower.pollen <= 0)
         {
             flowerEnabled.ValueRW = false;
+            growthEnabled.ValueRW = true;
+            
         }
         if(flower.owner != Entity.Null)
         {

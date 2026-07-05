@@ -5,11 +5,10 @@ using UnityEngine;
 
 public class FlowerAuthoring : MonoBehaviour
 {
-    public float pollen;
+
     public FlowerType type;
-    public int growth;
-    public int required;
-    public int increment;
+  
+
     class Baker : Baker<FlowerAuthoring>
     {
         public override void Bake(FlowerAuthoring authoring)
@@ -19,18 +18,14 @@ public class FlowerAuthoring : MonoBehaviour
             
             AddComponent(entity, new FlowerData
             {
-                pollen = authoring.pollen,
-                type = authoring.type,
-                
-
-
-              
+                pollen =  FlowerTypeInfo.GetPollen(authoring.type),
+                type = authoring.type, 
             });
             AddComponent(entity, new GrowthData
             {
-                growth = authoring.growth,
-                required = authoring.required,
-                increment = authoring.increment
+                growth = 0,
+                required = FlowerTypeInfo.GetGrowthRequired(authoring.type),
+                increment = FlowerTypeInfo.GetGrowthIncrement(authoring.type)
             });
       
            
