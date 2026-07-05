@@ -16,9 +16,12 @@ public class FlowerSpawnerAuthoring : MonoBehaviour
        
             var entity = GetEntity(TransformUsageFlags.Dynamic); 
             
-            AddComponent(entity, new SpawnerData
+            AddComponent(entity, new FlowerSpawnerData
             {
-                
+                spawnLeft = authoring.spawnLeft,
+                spawnRight = authoring.spawnRight,
+                unGrownPrefab = GetEntity(authoring.unGrownPrefab, TransformUsageFlags.Dynamic),
+                prefab = GetEntity(authoring.prefab, TransformUsageFlags.Dynamic),
             });
         }
     }
