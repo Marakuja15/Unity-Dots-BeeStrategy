@@ -28,7 +28,7 @@ public class FlowerAuthoring : MonoBehaviour
                 increment = FlowerTypeInfo.GetGrowthIncrement(authoring.type)
             });
       
-           
+            SetComponentEnabled<GrowthData>(entity, false);
             SetComponentEnabled<FlowerData>(entity, false);
         }
     }
