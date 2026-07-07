@@ -48,7 +48,12 @@ public partial struct FlowerSpawnerSystem : ISystem
             };
             if (physicsWorld.CastRay(input, out RaycastHit hit))
             {
-        
+                Entity hitEntity = hit.Entity;
+                if (state.EntityManager.HasComponent<FlowerData>(hitEntity) ||
+                state.EntityManager.HasComponent<GrowthData>(hitEntity))
+                {
+                    continue;
+                }
                 Entity newFlower = ecb.Instantiate(spawner.ValueRO.prefab);
                 float3 hitPosition = hit.Position;
                 ecb.AddComponent(newFlower, LocalTransform.FromPosition(hitPosition));

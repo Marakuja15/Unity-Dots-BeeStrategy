@@ -3,7 +3,9 @@ using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
-
+using Unity.Transforms;
+using Unity.Collections;
+using Unity.VisualScripting;
 
 [UpdateInGroup(typeof(InitializationSystemGroup))]
 public partial class Simulation : SystemBase
@@ -44,26 +46,59 @@ public partial class Simulation : SystemBase
         {
          
 
-            Vector2 pointerPos = _clickQueue.Dequeue();
-            Unity.Mathematics.Random rand = new Unity.Mathematics.Random((uint)UnityEngine.Random.Range(1, 100000));
-            float spreadRadius = 6.0f;
-          
-            Ray ray = _mainCamera.ScreenPointToRay(pointerPos);
-            Plane floorPlane = new Plane(Vector3.up, Vector3.zero);
-            if(floorPlane.Raycast(ray, out float distance))
+           
+         
+            _clickQueue.Dequeue(); 
+ 
+
+            var flowerPositions = new NativeList<float3>(Allocator.Temp);
+            var flowerEntities = new NativeList<Entity>(Allocator.Temp);
+            foreach (var(flowerData, transform, enabledState, entity)
+            in SystemAPI.Query<RefRO<FlowerData>,
+            RefRO<LocalTransform>,
+            EnabledRefRO<FlowerData>>().WithEntityAccess())
             {
-                float3 target = ray.GetPoint(distance);
-                foreach(var (UnitMovement,  EnabledState)
-                 in SystemAPI.Query<RefRW<BeeMovementData>,
-                 EnabledRefRW<BeeMovementData>>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState))
-                {
-                    EnabledState.ValueRW = true;
-                    float3 randomSphere = rand.NextFloat3Direction() * rand.NextFloat(0, spreadRadius);
-                 
-                    UnitMovement.ValueRW.moveLocation = target + randomSphere;
-                }
+                if(flowerData.ValueRO.owner != Entity.Null) continue;
+                flowerPositions.Add(transform.ValueRO.Position);
+                flowerEntities.Add(entity);
+
             }
+            if(flowerPositions.Length == 0 || flowerEntities.Length == 0)
+            {
+                flowerPositions.Dispose();
+                flowerEntities.Dispose();
+                continue;
+            }
+
+            foreach(var (beeData, beeMovementData,  transform,  EnabledState)
+            in SystemAPI.Query<RefRW<BeeData>,
+            RefRW<BeeMovementData>,
+            RefRO<LocalTransform>,
+            EnabledRefRW<BeeMovementData>>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState))
+            {
+                EnabledState.ValueRW = true;
+                float closestDist = float.MaxValue;
+                Entity closestFlower = Entity.Null;
+                int closestIndex = -1;
+                for(int i = 0; i < flowerPositions.Length; i++)
+                {
+                    float dist = math.distance(transform.ValueRO.Position, flowerPositions[i]);
+                    if( dist < closestDist )
+                    {
+                        closestDist = dist;
+                        closestFlower = flowerEntities[i];
+                        closestIndex = i;
+                    }
+                }
+           
+                beeData.ValueRW.targetFlower = closestFlower;
+                beeMovementData.ValueRW.moveLocation = flowerPositions[closestIndex];
+                
+            }
+            flowerPositions.Dispose();
+            flowerEntities.Dispose();
         }
+        
     }
     protected override void OnDestroy()
     {
