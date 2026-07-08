@@ -254,7 +254,7 @@ MonoBehaviour:
     x: -10
     y: -10
     z: -10
-  numToSpawn: 100
+  numToSpawn: 1000
 --- !u!1 &1401726804
 GameObject:
   m_ObjectHideFlags: 0

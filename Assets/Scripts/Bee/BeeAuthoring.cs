@@ -13,6 +13,7 @@ public class BeeAuthoring : MonoBehaviour
     public float wobbleAmplitude;
     public float randomOffSet;
     public float stopRadius;
+    public float maxPollen;
     class Baker : Baker<BeeAuthoring>
     {
         public override void Bake(BeeAuthoring authoring)
@@ -23,7 +24,7 @@ public class BeeAuthoring : MonoBehaviour
             AddComponent(entity, new BeeData
             {
                 health = authoring.health,
-               
+                maxPollen = authoring.maxPollen
 
               
             });

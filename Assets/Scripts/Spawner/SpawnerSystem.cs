@@ -38,8 +38,8 @@ public partial struct SpawnerSystem : ISystem
             var beeData = SystemAPI.GetComponent<BeeMovementData>(spawner.ValueRO.prefab);
             beeData.moveLocation = randomTarget;
             ecb.SetComponent(newEntity, beeData);
-       
-           
+            ecb.AddComponent<PollenCollector>(newEntity); 
+            ecb.AddComponent<NeedsFlowerAssignment>(newEntity);
 
             ecb.SetComponentEnabled<BeeMovementData>(newEntity, true);
         }
