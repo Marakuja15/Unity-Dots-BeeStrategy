@@ -31,7 +31,6 @@ public partial struct BeeMovementJob : IJobEntity
   void Execute(
         ref LocalTransform transform, 
         ref BeeMovementData movementData, 
-        ref BeeData beeData,
         EnabledRefRW<BeeMovementData> movementEnabled)
     {
 

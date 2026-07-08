@@ -6,9 +6,10 @@ using System.Collections.Generic;
 using Unity.Transforms;
 using Unity.Collections;
 using Unity.VisualScripting;
+using UnityEngine.Analytics;
 
 [UpdateInGroup(typeof(InitializationSystemGroup))]
-public partial class Simulation : SystemBase
+public partial class BeeFlowerPickerSystem : SystemBase
 {
 
     private InputSystem _inputControls;
@@ -70,11 +71,11 @@ public partial class Simulation : SystemBase
                 continue;
             }
 
-            foreach(var (beeData, beeMovementData,  transform,  EnabledState)
+            foreach(var (beeData, beeMovementData,  transform,  EnabledState, beeEntity)
             in SystemAPI.Query<RefRW<BeeData>,
             RefRW<BeeMovementData>,
             RefRO<LocalTransform>,
-            EnabledRefRW<BeeMovementData>>().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState))
+            EnabledRefRW<BeeMovementData>>().WithEntityAccess().WithOptions(EntityQueryOptions.IgnoreComponentEnabledState))
             {
                 EnabledState.ValueRW = true;
                 float closestDist = float.MaxValue;
@@ -89,10 +90,15 @@ public partial class Simulation : SystemBase
                         closestFlower = flowerEntities[i];
                         closestIndex = i;
                     }
+               
                 }
-           
-                beeData.ValueRW.targetFlower = closestFlower;
+                if(closestIndex == - 1) break;
+                
+                var flower = SystemAPI.GetComponentRW<FlowerData>(closestFlower);
+                flower.ValueRW.owner = beeEntity; 
                 beeMovementData.ValueRW.moveLocation = flowerPositions[closestIndex];
+                flowerPositions.RemoveAtSwapBack(closestIndex);
+                flowerEntities.RemoveAtSwapBack(closestIndex);
                 
             }
             flowerPositions.Dispose();
