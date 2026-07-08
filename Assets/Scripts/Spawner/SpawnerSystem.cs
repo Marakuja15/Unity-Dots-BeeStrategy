@@ -5,7 +5,7 @@ using Unity.Mathematics;
 
 [BurstCompile]
 [UpdateInGroup(typeof(SimulationSystemGroup))]
-[UpdateBefore(typeof(RemoveSystem))]
+// [UpdateBefore(typeof(RemoveSystem))]
 public partial struct SpawnerSystem : ISystem
 {
     [BurstCompile]
