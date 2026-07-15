@@ -1,83 +1,84 @@
 using Unity.Entities;
 using Unity.Mathematics;
-using UnityEngine;
-using UnityEngine.InputSystem;
-using System.Collections.Generic;
 using Unity.Transforms;
 using Unity.Collections;
-using Unity.VisualScripting;
-using UnityEngine.Analytics;
 
 [UpdateInGroup(typeof(InitializationSystemGroup))]
+[UpdateAfter(typeof(GridSystem))]
 public partial class BeeFlowerPickerSystem : SystemBase
 {
-
-
-
+    private GridSystem m_GridSystem;
     protected override void OnCreate()
     {
         RequireForUpdate<PollenCollector>();
-       
+        RequireForUpdate<GridSystemData>();
+        m_GridSystem = World.GetExistingSystemManaged<GridSystem>();
     }
+
     protected override void OnUpdate()
     {
-        var flowerPositions = new NativeList<float3>(Allocator.Temp);
-        var flowerEntities = new NativeList<Entity>(Allocator.Temp);
-        // Make a grid system and restrict the loop to search through one grid
-        foreach (var (flowerData, transform, enabledState, entity)
-        in SystemAPI.Query<RefRO<FlowerData>,
-        RefRO<LocalTransform>,
-        EnabledRefRO<FlowerData>>().WithEntityAccess())
-        {
-            if (flowerData.ValueRO.owner != Entity.Null) continue;
-            flowerPositions.Add(transform.ValueRO.Position);
-            flowerEntities.Add(entity);
+  
+      
 
-        }
-        if (flowerPositions.Length == 0 || flowerEntities.Length == 0)
-        {
-            flowerPositions.Dispose();
-            flowerEntities.Dispose();
-            return;
-        }
+        var grid = m_GridSystem.Grid;
+        int cellSize = SystemAPI.GetSingleton<GridSystemData>().cellSize;
+
+        if (grid.Count() == 0) return;
+
+        var takenFlowers = new NativeHashSet<Entity>(64, Allocator.Temp);
 
         foreach (var (beeMovementData, transform, beeEntity)
         in SystemAPI.Query<
-        RefRW<BeeMovementData>,
-        RefRO<LocalTransform>>()
-        .WithAll<PollenCollector, NeedsFlowerAssignment>() 
-        .WithDisabled<BeeMovementData>()                 
-        .WithEntityAccess())
+            RefRW<BeeMovementData>,
+            RefRO<LocalTransform>>()
+            .WithAll<PollenCollector, NeedsFlowerAssignment>()
+            .WithDisabled<BeeMovementData>()
+            .WithEntityAccess())
         {
+            float3 beePos = transform.ValueRO.Position;
+            int2 beeCell = new int2(
+                (int)math.floor(beePos.x / cellSize),
+                (int)math.floor(beePos.z / cellSize)
+            );
+
             float closestDist = float.MaxValue;
             Entity closestFlower = Entity.Null;
-            int closestIndex = -1;
-            for (int i = 0; i < flowerPositions.Length; i++)
-            {
-                float dist = math.distance(transform.ValueRO.Position, flowerPositions[i]);
-                if (dist < closestDist)
-                {
-                    closestDist = dist;
-                    closestFlower = flowerEntities[i];
-                    closestIndex = i;
-                }
+            float3 closestPos = float3.zero;
 
+            for (int x = -1; x <= 1; x++)
+            {
+                for (int z = -1; z <= 1; z++)
+                {
+                    int2 checkCell = beeCell + new int2(x, z);
+                    if (grid.TryGetFirstValue(checkCell, out Entity flowerEntity, out var it))
+                    {
+                        do
+                        {
+                            if (takenFlowers.Contains(flowerEntity)) continue;
+
+                            float3 flowerPos = SystemAPI.GetComponent<LocalTransform>(flowerEntity).Position;
+                            float dist = math.distance(beePos, flowerPos);
+                            if (dist < closestDist)
+                            {
+                                closestDist = dist;
+                                closestFlower = flowerEntity;
+                                closestPos = flowerPos;
+                            }
+                        } while (grid.TryGetNextValue(out flowerEntity, ref it));
+                    }
+                }
             }
-            if (closestIndex == -1) break;
+
+            if (closestFlower == Entity.Null) continue;
 
             var flower = SystemAPI.GetComponentRW<FlowerData>(closestFlower);
-            flower.ValueRW.owner = beeEntity;   
-            beeMovementData.ValueRW.moveLocation = flowerPositions[closestIndex];
+            flower.ValueRW.owner = beeEntity;
+            beeMovementData.ValueRW.moveLocation = closestPos;
             SystemAPI.SetComponentEnabled<BeeMovementData>(beeEntity, true);
             SystemAPI.SetComponentEnabled<NeedsFlowerAssignment>(beeEntity, false);
-            flowerPositions.RemoveAtSwapBack(closestIndex);
-            flowerEntities.RemoveAtSwapBack(closestIndex);
-
+            takenFlowers.Add(closestFlower);
         }
-        flowerPositions.Dispose();
-        flowerEntities.Dispose();
 
-
+        takenFlowers.Dispose();
     }
-
 }

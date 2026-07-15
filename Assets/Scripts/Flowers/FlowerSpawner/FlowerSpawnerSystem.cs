@@ -30,7 +30,9 @@ public partial struct FlowerSpawnerSystem : ISystem
         var ecbSingleton = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
         var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
         var physicsWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
-        for(int i = 0; i < spawner.ValueRO.numToSpawn; i++)
+        int spawnPerFrame = math.min(spawner.ValueRO.numToSpawn, 1000);
+
+        for(int i = 0; i < spawnPerFrame; i++)
         {
             float3 left = spawner.ValueRO.spawnLeft;
             float3 right = spawner.ValueRO.spawnRight;

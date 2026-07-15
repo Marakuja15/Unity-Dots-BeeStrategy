@@ -19,8 +19,8 @@ public partial struct SpawnerSystem : ISystem
     public void OnUpdate(ref SystemState state)
     {
         if(!SystemAPI.TryGetSingletonEntity<SpawnerData>(out Entity spawnerEntity)) return;
-        RefRW<SpawnerData> spawner = SystemAPI.GetComponentRW<SpawnerData>(spawnerEntity);
-
+        var spawner = SystemAPI.GetComponentRW<SpawnerData>(spawnerEntity);
+        
         if(spawner.ValueRO.numOfEntities < 1) return;
         var ecbSingleton = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
         var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
