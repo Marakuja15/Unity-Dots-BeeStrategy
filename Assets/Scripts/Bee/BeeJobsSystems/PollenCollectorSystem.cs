@@ -32,7 +32,7 @@ public partial struct PollenCollectorSystem : ISystem
         var gridData = SystemAPI.GetSingleton<GridData>();
         if (gridData.Grid.Count() == 0) return;
 
-        int cellSize = SystemAPI.GetSingleton<GridData>().cellSize;
+        int cellSize = SystemAPI.GetSingleton<GridSystemData>().cellSize;
         var takenFlowers = new NativeHashSet<Entity>(64, Allocator.TempJob);
 
         var flowerLookup = SystemAPI.GetComponentLookup<FlowerData>(false);
@@ -51,6 +51,7 @@ public partial struct PollenCollectorSystem : ISystem
 
         state.Dependency = job.Schedule(pollenCollectorQuery, state.Dependency);
         takenFlowers.Dispose(state.Dependency); 
+        state.Dependency.Complete();
     }
 }
 

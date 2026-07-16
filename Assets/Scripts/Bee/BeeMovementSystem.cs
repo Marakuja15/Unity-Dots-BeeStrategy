@@ -14,7 +14,7 @@ public partial struct BeeMovementSystem : ISystem
         
       
         var gridData = SystemAPI.GetSingleton<GridData>();
-        int cellSize = SystemAPI.GetSingleton<GridData>().cellSize;
+        int cellSize = SystemAPI.GetSingleton<GridSystemData>().cellSize;
         
         new BeeMovementJob 
         { 

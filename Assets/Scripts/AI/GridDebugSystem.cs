@@ -4,12 +4,12 @@ using UnityEngine;
 using Unity.Collections;
 
 [UpdateInGroup(typeof(SimulationSystemGroup))]
-[UpdateAfter(typeof(GridSystem))]
 public partial class GridDebugSystem : SystemBase
 {
     protected override void OnCreate()
     {
         RequireForUpdate<GridData>();
+        RequireForUpdate<GridSystemData>();
     }
 
     protected override void OnUpdate()
@@ -17,7 +17,7 @@ public partial class GridDebugSystem : SystemBase
         var gridData = SystemAPI.GetSingleton<GridData>();
         if (!gridData.Grid.IsCreated) return;
 
-        int cellSize = gridData.cellSize;
+        int cellSize = SystemAPI.GetSingleton<GridSystemData>().cellSize;
         // Zbierzmy klucze z mapy kwiatów (żeby narysować nieodkryte na czerwono)
         var flowerKeys = gridData.Grid.GetKeyArray(Allocator.Temp);
         // Zbierzmy klucze z mapy odkrytych kratek (na zielono)

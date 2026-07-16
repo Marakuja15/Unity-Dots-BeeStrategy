@@ -39,7 +39,7 @@ public partial struct ScoutSystem : ISystem
         var gridData = SystemAPI.GetSingleton<GridData>();
         if (gridData.Grid.Count() == 0) return;
         
-        int cellSize = SystemAPI.GetSingleton<GridData>().cellSize;
+        int cellSize = SystemAPI.GetSingleton<GridSystemData>().cellSize;
         uint randomSeed = (uint)(SystemAPI.Time.ElapsedTime * 1000) + 1;
 
         var job1 = new FindScoutTargetJob
@@ -62,6 +62,7 @@ public partial struct ScoutSystem : ISystem
 
         var handle2 = job2.ScheduleParallel(hybridScoutQuery, state.Dependency);
         state.Dependency = JobHandle.CombineDependencies(handle1, handle2);
+        state.Dependency.Complete();
     }
 }
 

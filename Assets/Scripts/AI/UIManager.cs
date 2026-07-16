@@ -2,7 +2,7 @@ using Unity.Entities;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Unity.Properties;
-using Unity.Entities;
+
 using Unity.Mathematics;
 
 

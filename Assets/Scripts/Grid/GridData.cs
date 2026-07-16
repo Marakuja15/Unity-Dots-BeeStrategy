@@ -1,15 +1,10 @@
-
 using Unity.Entities;
-
 using Unity.Mathematics;
 using Unity.Collections;
+
 public struct GridData : IComponentData
 {
-    public int cellSize;
     public NativeParallelMultiHashMap<int2, Entity> Grid;
     public NativeParallelMultiHashMap<int2, float3> FlowerPositions;
     public NativeParallelHashMap<int2, bool> DiscoveredCells;
-
- 
-
 }
