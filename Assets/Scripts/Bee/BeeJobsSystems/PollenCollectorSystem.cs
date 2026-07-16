@@ -21,7 +21,7 @@ public partial struct PollenCollectorSystem : ISystem
   
         pollenCollectorQuery = SystemAPI.QueryBuilder()
             .WithAll<PollenCollector, NeedsFlowerAssignment>()
-            .WithAllRW<BeeMovementData>()
+            .WithAllRW<BeeMovementData, BeeData>()
             .WithAll<LocalTransform>()
             .Build();
     }
@@ -37,6 +37,7 @@ public partial struct PollenCollectorSystem : ISystem
 
         var flowerLookup = SystemAPI.GetComponentLookup<FlowerData>(false);
         var transformLookup = SystemAPI.GetComponentLookup<LocalTransform>(true);
+        
 
         var job = new PollenCollectorJob
         {
@@ -45,7 +46,7 @@ public partial struct PollenCollectorSystem : ISystem
             cellSize = cellSize,
             takenFlowers = takenFlowers,
             flowerLookup = flowerLookup,
-            transformLookup = transformLookup
+            transformLookup = transformLookup,
         };
 
 
@@ -69,6 +70,7 @@ public partial struct PollenCollectorJob : IJobEntity
     void Execute(
         Entity beeEntity,
         ref BeeMovementData beeMovementData,
+        ref BeeData beeData,
         in LocalTransform transform,
         EnabledRefRW<NeedsFlowerAssignment> needsFlowerEnabled)
     {
@@ -112,7 +114,14 @@ public partial struct PollenCollectorJob : IJobEntity
             flowerLookup[closestFlower] = flower;
             beeMovementData.moveLocation = closestPos;
             needsFlowerEnabled.ValueRW = false;
+            beeData.pollenType = flower.type;
             takenFlowers.Add(closestFlower);
         }
+        if(beeData.collectedPollen >= beeData.maxPollen)
+        {
+            beeData.collectedPollen = beeData.maxPollen;
+            /// add return to the city
+        }
+        /// add evation when attacked
     }
 }

@@ -22,6 +22,7 @@ public partial class GridSystem : SystemBase
             Grid = new NativeParallelMultiHashMap<int2, Entity>(1000, Allocator.Persistent),
             FlowerPositions = new NativeParallelMultiHashMap<int2, float3>(1000, Allocator.Persistent),
             DiscoveredCells = new NativeParallelHashMap<int2, bool>(10000, Allocator.Persistent),
+            BeesInCell = new NativeParallelMultiHashMap<int2, Entity>(1000, Allocator.Persistent)
         };
         var entity = EntityManager.CreateEntity();
         EntityManager.AddComponentData(entity, gridData);
@@ -43,7 +44,7 @@ public partial class GridSystem : SystemBase
         {
             gridData.Grid.Capacity = flowerCount;
             gridData.FlowerPositions.Capacity = flowerCount;
-           
+            
         }
         
         Dependency = new BuildGridJob
@@ -51,6 +52,7 @@ public partial class GridSystem : SystemBase
             cellSize = cellSize,
             gridWriter = gridData.Grid.AsParallelWriter(),
             posWriter = gridData.FlowerPositions.AsParallelWriter()
+        
         }.ScheduleParallel(Dependency);
 
         Dependency.Complete();
@@ -63,6 +65,7 @@ public partial class GridSystem : SystemBase
             if (gridData.Grid.IsCreated) gridData.Grid.Dispose();
             if (gridData.FlowerPositions.IsCreated) gridData.FlowerPositions.Dispose();
             if (gridData.DiscoveredCells.IsCreated) gridData.DiscoveredCells.Dispose();
+            if (gridData.BeesInCell.IsCreated) gridData.BeesInCell.Dispose();
         }
     }
     

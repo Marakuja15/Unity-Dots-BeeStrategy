@@ -71,15 +71,24 @@ public partial struct PureDefenderJob : IJobEntity
         {
             int2 randomOffset = new int2(random.NextInt(-15, 16), random.NextInt(-15, 16));
             int2 checkCell = beeCell + randomOffset;
-
+            
             if (discoveredCells.ContainsKey(checkCell))
+   
             {
+                bool isBorder = 
+                !discoveredCells.ContainsKey(checkCell + new int2(1, 0)) ||
+                !discoveredCells.ContainsKey(checkCell + new int2(-1, 0)) ||
+                !discoveredCells.ContainsKey(checkCell + new int2(0, 1)) ||
+                !discoveredCells.ContainsKey(checkCell + new int2(0, -1));
+                if(!isBorder) continue;
                 float3 targetPos = new float3((checkCell.x * cellSize) + (cellSize * 0.5f), beePos.y, (checkCell.y * cellSize) + (cellSize * 0.5f));
                 beeMovementData.moveLocation = targetPos;
     
                 movementEnabled.ValueRW = true; 
                 break;
             }
+            /// add actual defending
+            /// add behavior related to random ass bees
         }
     }
 }
