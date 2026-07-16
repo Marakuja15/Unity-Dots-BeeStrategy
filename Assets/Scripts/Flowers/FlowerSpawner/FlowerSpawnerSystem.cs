@@ -36,16 +36,17 @@ public partial struct FlowerSpawnerSystem : ISystem
         {
             float3 left = spawner.ValueRO.spawnLeft;
             float3 right = spawner.ValueRO.spawnRight;
-            float3 randomPoint = new float3(
-                random.NextFloat(math.min(left.x, right.x), math.max(left.x, right.x)),
-                math.max(left.y, right.y) + 50f,
-                random.NextFloat(math.min(left.z, right.z), math.max(left.z, right.z))
-            );
+            
+            float randomX = random.NextFloat(math.min(left.x, right.x), math.max(left.x, right.x));
+            float randomZ = random.NextFloat(math.min(left.z, right.z), math.max(left.z, right.z));
+            
+            float3 rayStart = new float3(randomX, 100f, randomZ);
+            float3 rayEnd = new float3(randomX, -100f, randomZ);
         
             RaycastInput input = new RaycastInput
             {
-                Start = randomPoint,                     
-                End = randomPoint - new float3(0, 100f, 0),     
+                Start = rayStart,                     
+                End = rayEnd,     
                 Filter = CollisionFilter.Default
             };
             if (physicsWorld.CastRay(input, out RaycastHit hit))

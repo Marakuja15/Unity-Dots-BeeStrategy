@@ -15,14 +15,11 @@ public class GridAuthoring : MonoBehaviour
        
 
             var entity = GetEntity(TransformUsageFlags.Dynamic); 
-            AddComponent(entity, new GridSystemData
+            AddComponent(entity, new GridData
             {
                 cellSize = authoring.cellSize
 
               
-            });
-            AddComponent(entity, new GridCellData {
-                discovered = false  
             });
       
            

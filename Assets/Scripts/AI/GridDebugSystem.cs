@@ -9,46 +9,60 @@ public partial class GridDebugSystem : SystemBase
 {
     protected override void OnCreate()
     {
-        RequireForUpdate<GridSystemData>();
+        RequireForUpdate<GridData>();
     }
 
     protected override void OnUpdate()
     {
-        var gridSystem = World.GetExistingSystemManaged<GridSystem>();
-        if (gridSystem == null || !gridSystem.Grid.IsCreated) return;
+        var gridData = SystemAPI.GetSingleton<GridData>();
+        if (!gridData.Grid.IsCreated) return;
 
-        int cellSize = SystemAPI.GetSingleton<GridSystemData>().cellSize;
-        var keys = gridSystem.Grid.GetKeyArray(Allocator.Temp);
+        int cellSize = gridData.cellSize;
+        // Zbierzmy klucze z mapy kwiatów (żeby narysować nieodkryte na czerwono)
+        var flowerKeys = gridData.Grid.GetKeyArray(Allocator.Temp);
+        // Zbierzmy klucze z mapy odkrytych kratek (na zielono)
+        var discoveredKeys = gridData.DiscoveredCells.GetKeyArray(Allocator.Temp);
         
-        // Używamy NativeHashSet, żeby nie rysować tej samej kratki wiele razy
-        // (bo MultiHashMap zwraca klucz dla każdego kwiatka w danej kratce)
-        var uniqueCells = new NativeHashSet<int2>(keys.Length, Allocator.Temp);
+        var uniqueCells = new NativeHashSet<int2>(flowerKeys.Length + discoveredKeys.Length, Allocator.Temp);
 
-        foreach (var cell in keys)
+        // Funkcja pomocnicza do rysowania
+        void DrawCell(int2 cell, Color color)
+        {
+            float3 bottomLeft = new float3(cell.x * cellSize, 0, cell.y * cellSize);
+            float3 bottomRight = new float3((cell.x + 1) * cellSize, 0, cell.y * cellSize);
+            float3 topLeft = new float3(cell.x * cellSize, 0, (cell.y + 1) * cellSize);
+            float3 topRight = new float3((cell.x + 1) * cellSize, 0, (cell.y + 1) * cellSize);
+
+            Debug.DrawLine(bottomLeft, bottomRight, color);
+            Debug.DrawLine(bottomRight, topRight, color);
+            Debug.DrawLine(topRight, topLeft, color);
+            Debug.DrawLine(topLeft, bottomLeft, color);
+            
+            // Przekątne
+            Debug.DrawLine(bottomLeft, topRight, new Color(color.r, color.g, color.b, 0.2f));
+            Debug.DrawLine(topLeft, bottomRight, new Color(color.r, color.g, color.b, 0.2f));
+        }
+
+        // 1. Rysujemy na ZIELONO wszystkie kratki, które pszczoły już odkryły
+        foreach (var cell in discoveredKeys)
         {
             if (uniqueCells.Add(cell))
             {
-                // Obliczanie rogów kratki (Y = 0, bo to grid płaski)
-                float3 bottomLeft = new float3(cell.x * cellSize, 0, cell.y * cellSize);
-                float3 bottomRight = new float3((cell.x + 1) * cellSize, 0, cell.y * cellSize);
-                float3 topLeft = new float3(cell.x * cellSize, 0, (cell.y + 1) * cellSize);
-                float3 topRight = new float3((cell.x + 1) * cellSize, 0, (cell.y + 1) * cellSize);
+                DrawCell(cell, Color.green);
+            }
+        }
 
-                Color color = Color.green;
-
-                // Rysowanie 4 linii tworzących kwadrat
-                Debug.DrawLine(bottomLeft, bottomRight, color);
-                Debug.DrawLine(bottomRight, topRight, color);
-                Debug.DrawLine(topRight, topLeft, color);
-                Debug.DrawLine(topLeft, bottomLeft, color);
-                
-                // Można też narysować przekątne, żeby kratka była bardziej widoczna
-                Debug.DrawLine(bottomLeft, topRight, new Color(0f, 1f, 0f, 0.2f));
-                Debug.DrawLine(topLeft, bottomRight, new Color(0f, 1f, 0f, 0.2f));
+        // 2. Rysujemy na CZERWONO kratki, w których rosną kwiaty, ale pszczoły jeszcze ich nie odkryły
+        foreach (var cell in flowerKeys)
+        {
+            if (uniqueCells.Add(cell)) // Jeśli się dodało, to znaczy, że nie było w odkrytych (bo inaczej dodalibyśmy to wyżej)
+            {
+                DrawCell(cell, Color.red);
             }
         }
         
         uniqueCells.Dispose();
-        keys.Dispose();
+        flowerKeys.Dispose();
+        discoveredKeys.Dispose();
     }
 }

@@ -3,84 +3,86 @@ using Unity.Burst;
 using Unity.Transforms;
 using Unity.Mathematics;
 using Unity.Collections;
-using Unity.VisualScripting;
-using UnityEngine;
-
 
 [UpdateInGroup(typeof(InitializationSystemGroup))]
-[UpdateBefore(typeof(BeeFlowerPickerSystem))]
+[UpdateBefore(typeof(PollenCollectorSystem))]
 public partial class GridSystem : SystemBase
 {
-    public NativeParallelMultiHashMap<int2, Entity> Grid;
-    public NativeParallelMultiHashMap<int2, float3> FlowerPositions;
-  
-  
- 
+   
 
+   
 
     protected override void OnCreate()
     {
-        Grid = new NativeParallelMultiHashMap<int2, Entity>(1000, Allocator.Persistent);
-        FlowerPositions = new NativeParallelMultiHashMap<int2, float3>(1000, Allocator.Persistent);
         RequireForUpdate<FlowerData>();
-        RequireForUpdate<GridSystemData>();
+        RequireForUpdate<GridData>();
     }
 
     protected override void OnUpdate()
     {
-        Grid.Clear();
-        FlowerPositions.Clear();
-
        
-        int cellSize = SystemAPI.GetSingleton<GridSystemData>().cellSize;
+        ref var gridData = ref SystemAPI.GetSingletonRW<GridData>().ValueRW;
+
+        if (!gridData.Grid.IsCreated)
+        {
+            gridData.Grid = new NativeParallelMultiHashMap<int2, Entity>(1000, Allocator.Persistent);
+            gridData.FlowerPositions = new NativeParallelMultiHashMap<int2, float3>(1000, Allocator.Persistent);
+            gridData.DiscoveredCells = new NativeParallelHashMap<int2, bool>(10000, Allocator.Persistent);
+        }
+
+        gridData.Grid.Clear();
+        gridData.FlowerPositions.Clear();
+        int cellSize = gridData.cellSize;
    
         int flowerCount = 0;
         foreach (var _ in SystemAPI.Query<RefRO<FlowerData>>())
             flowerCount++;
 
-        if (Grid.Capacity < flowerCount)
+        if (gridData.Grid.Capacity < flowerCount)
         {
-            Grid.Capacity = flowerCount;
-            FlowerPositions.Capacity = flowerCount;
+            gridData.Grid.Capacity = flowerCount;
+            gridData.FlowerPositions.Capacity = flowerCount;
+           
         }
-
-    
-        new BuildGridJob
+        
+        Dependency = new BuildGridJob
         {
             cellSize = cellSize,
-            gridWriter = Grid.AsParallelWriter(),
-            posWriter = FlowerPositions.AsParallelWriter()
-        }.ScheduleParallel();
+            gridWriter = gridData.Grid.AsParallelWriter(),
+            posWriter = gridData.FlowerPositions.AsParallelWriter()
+        
+        }.ScheduleParallel(Dependency);
+      
     }
-
     protected override void OnDestroy()
     {
-        if (Grid.IsCreated) Grid.Dispose();
-        if (FlowerPositions.IsCreated) FlowerPositions.Dispose();
+   
+        if (SystemAPI.TryGetSingleton<GridData>(out var gridData))
+        {
+            if (gridData.Grid.IsCreated) gridData.Grid.Dispose();
+            if (gridData.FlowerPositions.IsCreated) gridData.FlowerPositions.Dispose();
+            if (gridData.DiscoveredCells.IsCreated) gridData.DiscoveredCells.Dispose();
+        }
     }
+    
 }
 
 [BurstCompile]
 public partial struct BuildGridJob : IJobEntity
 {
-  
     public int cellSize;
     public NativeParallelMultiHashMap<int2, Entity>.ParallelWriter gridWriter;
     public NativeParallelMultiHashMap<int2, float3>.ParallelWriter posWriter;
 
     void Execute(in FlowerData flower, in LocalTransform transform, Entity entity)
     {   
-
         if (flower.owner != Entity.Null) return;
         
-
         int2 cell = new int2(
             (int)math.floor(transform.Position.x / cellSize),
             (int)math.floor(transform.Position.z / cellSize)
         );
         
-  
-
         gridWriter.Add(cell, entity);
         posWriter.Add(cell, transform.Position);
     }

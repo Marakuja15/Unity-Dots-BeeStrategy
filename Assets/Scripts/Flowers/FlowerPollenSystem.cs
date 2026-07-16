@@ -7,22 +7,38 @@ public partial struct FlowerPollenSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
+        float deltaTime = SystemAPI.Time.DeltaTime;
+        float collectSpeed = 5f; 
         foreach (var (flower, flowerEnabled, growthEnabled) in
             SystemAPI.Query<RefRW<FlowerData>,
             EnabledRefRW<FlowerData>,
-            EnabledRefRW<GrowthData>>())
+            EnabledRefRW<GrowthData>>()
+            .WithDisabled<GrowthData>())
         {
             if (flower.ValueRO.owner == Entity.Null) continue;
+            if (SystemAPI.IsComponentEnabled<BeeMovementData>(flower.ValueRO.owner)) continue;
+          
+           
+            float amountToCollect = collectSpeed * deltaTime;
             
-            flower.ValueRW.pollen -= 1;
+        
+            if (amountToCollect > flower.ValueRO.pollen)
+            {
+                amountToCollect = flower.ValueRO.pollen;
+            }
+
+            flower.ValueRW.pollen -= amountToCollect;
             var bee = SystemAPI.GetComponentRW<BeeData>(flower.ValueRO.owner);
-            bee.ValueRW.collectedPollen += 1;
+        
+            bee.ValueRW.collectedPollen += amountToCollect;
             
             if (flower.ValueRO.pollen <= 0)
             {
-                flower.ValueRW.owner = Entity.Null;
+           
                 flowerEnabled.ValueRW = false;
                 growthEnabled.ValueRW = true;
+                SystemAPI.SetComponentEnabled<NeedsFlowerAssignment>(flower.ValueRO.owner, true);
+                flower.ValueRW.owner = Entity.Null;
             }
         }
     }

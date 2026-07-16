@@ -40,6 +40,7 @@ public partial struct SpawnerSystem : ISystem
             ecb.SetComponent(newEntity, beeData);
             ecb.AddComponent<PollenCollector>(newEntity); 
             ecb.AddComponent<NeedsFlowerAssignment>(newEntity);
+            ecb.AddComponent<Scout>(newEntity);
 
             ecb.SetComponentEnabled<BeeMovementData>(newEntity, true);
         }

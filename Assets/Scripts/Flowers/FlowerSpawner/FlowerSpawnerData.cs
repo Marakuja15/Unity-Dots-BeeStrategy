@@ -8,4 +8,6 @@ public struct FlowerSpawnerData : IComponentData
     public Entity prefab;
     public int numToSpawn;
 
+    public Entity floorPrefab;
+
 }
