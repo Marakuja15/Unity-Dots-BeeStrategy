@@ -117,11 +117,7 @@ public partial struct PollenCollectorJob : IJobEntity
             beeData.pollenType = flower.type;
             takenFlowers.Add(closestFlower);
         }
-        if(beeData.collectedPollen >= beeData.maxPollen)
-        {
-            beeData.collectedPollen = beeData.maxPollen;
-            /// add return to the city
-        }
-        /// add evation when attacked
+
+   
     }
 }

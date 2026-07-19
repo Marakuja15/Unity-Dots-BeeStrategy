@@ -1,13 +1,17 @@
 
 using System;
 using Unity.Entities;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class BeeHiveAuthoring : MonoBehaviour
 {
 
-    public FlowerType type;
-  
+
+    public int cityDefenders;
+    public float storedPollen;
+    public int citizens;
+    public Vector3 entrance;
 
     class Baker : Baker<BeeHiveAuthoring>
     {
@@ -15,7 +19,14 @@ public class BeeHiveAuthoring : MonoBehaviour
         {
        
             var entity = GetEntity(TransformUsageFlags.Dynamic); 
-            
+            AddComponent(entity, new BeeHiveData
+            {
+                citiyDefenders = authoring.cityDefenders,
+                storedPollen = authoring.storedPollen,
+                citizens = authoring.citizens,
+                entrance = authoring.entrance
+
+            });
      
         }
     }

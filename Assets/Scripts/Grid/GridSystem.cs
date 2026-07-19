@@ -22,7 +22,8 @@ public partial class GridSystem : SystemBase
             Grid = new NativeParallelMultiHashMap<int2, Entity>(1000, Allocator.Persistent),
             FlowerPositions = new NativeParallelMultiHashMap<int2, float3>(1000, Allocator.Persistent),
             DiscoveredCells = new NativeParallelHashMap<int2, bool>(10000, Allocator.Persistent),
-            BeesInCell = new NativeParallelMultiHashMap<int2, Entity>(1000, Allocator.Persistent)
+            BeesInCell = new NativeParallelMultiHashMap<int2, Entity>(1000, Allocator.Persistent),
+            TeamHives = new NativeParallelHashMap<byte, Entity>(1000, Allocator.Persistent)
         };
         var entity = EntityManager.CreateEntity();
         EntityManager.AddComponentData(entity, gridData);
@@ -66,6 +67,7 @@ public partial class GridSystem : SystemBase
             if (gridData.FlowerPositions.IsCreated) gridData.FlowerPositions.Dispose();
             if (gridData.DiscoveredCells.IsCreated) gridData.DiscoveredCells.Dispose();
             if (gridData.BeesInCell.IsCreated) gridData.BeesInCell.Dispose();
+            if (gridData.TeamHives.IsCreated) gridData.TeamHives.Dispose();
         }
     }
     

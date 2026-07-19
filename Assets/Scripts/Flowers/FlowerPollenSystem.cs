@@ -39,7 +39,14 @@ public partial struct FlowerPollenSystem : ISystem
                 growthEnabled.ValueRW = true;
                 SystemAPI.SetComponentEnabled<NeedsFlowerAssignment>(flower.ValueRO.owner, true);
                 flower.ValueRW.owner = Entity.Null;
+               
+                if (bee.ValueRO.collectedPollen >= bee.ValueRO.maxPollen)
+                {
+       
+                    SystemAPI.SetComponentEnabled<ReturnToHive>(flower.ValueRO.owner, true);
+                }
             }
+
         }
     }
 }

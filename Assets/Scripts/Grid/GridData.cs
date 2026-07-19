@@ -10,5 +10,5 @@ public struct GridData : IComponentData
 
     public NativeParallelMultiHashMap<int2, Entity> BeesInCell;
 
-    public NativeParallelMultiHashMap<int2, Entity> Cities; /// implement cities and the capital
+    public NativeParallelHashMap<byte, Entity> TeamHives; 
 }
