@@ -22,7 +22,7 @@ public class BeeHiveAuthoring : MonoBehaviour
             AddComponent(entity, new BeeHiveData
             {
                 citiyDefenders = authoring.cityDefenders,
-                storedPollen = authoring.storedPollen,
+           
                 citizens = authoring.citizens,
                 entrance = authoring.entrance
     
