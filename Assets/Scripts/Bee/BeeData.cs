@@ -8,10 +8,10 @@ public struct BeeData : IComponentData
 {
   
     public float health;
-    public float collectedPollen;
-    public float maxPollen;
-    public FlowerType pollenType;
 
+    public float maxPollen;
+
+    public Entity currentHive;
 
 
 

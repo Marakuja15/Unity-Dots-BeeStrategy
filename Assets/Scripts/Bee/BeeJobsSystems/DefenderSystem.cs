@@ -4,7 +4,7 @@ using Unity.Transforms;
 using Unity.Collections;
 using Unity.Burst;
 using Unity.Jobs;
-
+//TODO: add update before teams bee behaviour
 
 [UpdateAfter(typeof(PollenCollectorSystem))]
 

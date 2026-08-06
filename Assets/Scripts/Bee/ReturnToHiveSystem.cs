@@ -10,9 +10,9 @@ public partial struct ReturnToHiveSystem : ISystem
     {
 
 
-        foreach (var (beeData, movement, transform, team, movementEnabled, returningEnabled) in
+        foreach (var (beeData, movement, transform, team, movementEnabled) in
                  SystemAPI.Query<RefRW<BeeData>, RefRW<BeeMovementData>, RefRO<LocalTransform>, RefRO<TeamData>,
-                 EnabledRefRW<BeeMovementData>, EnabledRefRW<ReturnToHive>>()
+                 EnabledRefRW<BeeMovementData>>()
                  .WithDisabled<BeeMovementData>()
                  .WithAll<ReturnToHive>())
         {
@@ -36,10 +36,12 @@ public partial struct ReturnToHiveSystem : ISystem
                     movement.ValueRW.moveLocation = hiveTransform.ValueRO.Position;
                 }
             }
+            
 
             if (closestHive != Entity.Null)
             {
                 movementEnabled.ValueRW = true;
+                beeData.ValueRW.currentHive = closestHive;
             }
         }
     }

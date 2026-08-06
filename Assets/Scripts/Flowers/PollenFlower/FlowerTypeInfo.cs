@@ -1,3 +1,5 @@
+using System;
+
 public static class FlowerTypeInfo
 {
     public static int GetGrowthIncrement(FlowerType type) => type switch
@@ -22,4 +24,8 @@ public static class FlowerTypeInfo
         FlowerType.Sunflower => 50f,
         _ => 10f
     };
+    public static FlowerType[] GetAllTypes()
+    {
+        return (FlowerType[])Enum.GetValues(typeof(FlowerType));
+    }
 }

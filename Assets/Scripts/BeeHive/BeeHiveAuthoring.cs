@@ -1,7 +1,7 @@
 
-using System;
+
 using Unity.Entities;
-using Unity.VisualScripting;
+
 using UnityEngine;
 
 public class BeeHiveAuthoring : MonoBehaviour
@@ -25,8 +25,14 @@ public class BeeHiveAuthoring : MonoBehaviour
                 storedPollen = authoring.storedPollen,
                 citizens = authoring.citizens,
                 entrance = authoring.entrance
-
+    
             });
+           var buffer = AddBuffer<PollenStorage>(entity);
+           foreach (FlowerType type in FlowerTypeInfo.GetAllTypes())
+            {
+                buffer.Add(new PollenStorage { Type = type, Amount = 0 });
+            }
+           
      
         }
     }

@@ -11,6 +11,7 @@ public partial struct PollenCollectorSystem : ISystem
 {
     private EntityQuery pollenCollectorQuery;
 
+
     [BurstCompile]
     public void OnCreate(ref SystemState state) 
     {
@@ -24,6 +25,8 @@ public partial struct PollenCollectorSystem : ISystem
             .WithAllRW<BeeMovementData, BeeData>()
             .WithAll<LocalTransform>()
             .Build();
+ 
+        
     }
 
     [BurstCompile]
@@ -48,6 +51,7 @@ public partial struct PollenCollectorSystem : ISystem
             flowerLookup = flowerLookup,
             transformLookup = transformLookup,
         };
+        
 
 
         state.Dependency = job.Schedule(pollenCollectorQuery, state.Dependency);
@@ -72,8 +76,20 @@ public partial struct PollenCollectorJob : IJobEntity
         ref BeeMovementData beeMovementData,
         ref BeeData beeData,
         in LocalTransform transform,
-        EnabledRefRW<NeedsFlowerAssignment> needsFlowerEnabled)
+        EnabledRefRW<NeedsFlowerAssignment> needsFlowerEnabled,
+        EnabledRefRW<ReturnToHive> returnToHiveEnabled,
+        DynamicBuffer<PollenStorage> pollenBuffer)
     {
+  
+        float total = 0;
+        for (int i = 0; i < pollenBuffer.Length; i++)
+            total += pollenBuffer[i].Amount;
+        if (total >= beeData.maxPollen)
+        {
+            needsFlowerEnabled.ValueRW = false;
+            returnToHiveEnabled.ValueRW = true;
+            return; 
+        }
         float3 beePos = transform.Position;
         int2 beeCell = new int2((int)math.floor(beePos.x / cellSize), (int)math.floor(beePos.z / cellSize));
 
@@ -114,7 +130,6 @@ public partial struct PollenCollectorJob : IJobEntity
             flowerLookup[closestFlower] = flower;
             beeMovementData.moveLocation = closestPos;
             needsFlowerEnabled.ValueRW = false;
-            beeData.pollenType = flower.type;
             takenFlowers.Add(closestFlower);
         }
 

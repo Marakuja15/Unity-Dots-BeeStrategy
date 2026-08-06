@@ -18,19 +18,23 @@ public partial struct FlowerPollenSystem : ISystem
             if (flower.ValueRO.owner == Entity.Null) continue;
             if (SystemAPI.IsComponentEnabled<BeeMovementData>(flower.ValueRO.owner)) continue;
           
-           
+
             float amountToCollect = collectSpeed * deltaTime;
             
-        
+           
             if (amountToCollect > flower.ValueRO.pollen)
             {
                 amountToCollect = flower.ValueRO.pollen;
             }
 
             flower.ValueRW.pollen -= amountToCollect;
+
             var bee = SystemAPI.GetComponentRW<BeeData>(flower.ValueRO.owner);
-        
-            bee.ValueRW.collectedPollen += amountToCollect;
+            var beeBuffer = SystemAPI.GetBuffer<PollenStorage>(flower.ValueRO.owner);
+            int idx = (int)flower.ValueRO.type;
+            var slot = beeBuffer[idx];
+            slot.Amount += amountToCollect;
+            beeBuffer[idx] = slot;
             
             if (flower.ValueRO.pollen <= 0)
             {
@@ -40,11 +44,7 @@ public partial struct FlowerPollenSystem : ISystem
                 SystemAPI.SetComponentEnabled<NeedsFlowerAssignment>(flower.ValueRO.owner, true);
                 flower.ValueRW.owner = Entity.Null;
                
-                if (bee.ValueRO.collectedPollen >= bee.ValueRO.maxPollen)
-                {
-       
-                    SystemAPI.SetComponentEnabled<ReturnToHive>(flower.ValueRO.owner, true);
-                }
+          
             }
 
         }
