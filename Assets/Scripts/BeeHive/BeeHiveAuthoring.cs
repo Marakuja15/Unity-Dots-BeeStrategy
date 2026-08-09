@@ -9,7 +9,7 @@ public class BeeHiveAuthoring : MonoBehaviour
 
 
     public int cityDefenders;
-    public float storedPollen;
+
     public int citizens;
     public Vector3 entrance;
 

@@ -32,7 +32,8 @@ public partial struct UnloadPollenSystem : ISystem
                     beeSlot.Amount = 0;
                     beeBuffer[i] = beeSlot;
                 }
-
+                hiveData.ValueRW.storedNectar += beeData.ValueRO.collectedNectar;
+                beeData.ValueRW.collectedNectar = 0;
             
 
                 returnEnabled.ValueRW = false;

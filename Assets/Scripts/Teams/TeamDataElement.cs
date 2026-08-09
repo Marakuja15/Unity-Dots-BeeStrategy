@@ -4,7 +4,12 @@ public struct TeamDataElement : IBufferElementData
 {
     public byte TeamID;      
     public int BeeCount;      
-    public int StoredPollen; 
+
     public Entity QueenEntity;  
+
+    public int constructionWorkers;
+
+    public float storedWax;
+    public float storedHoney;
 
 }

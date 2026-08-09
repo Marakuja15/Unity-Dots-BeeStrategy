@@ -28,4 +28,13 @@ public static class FlowerTypeInfo
     {
         return (FlowerType[])Enum.GetValues(typeof(FlowerType));
     }
+
+    public static float GetNectar(FlowerType type) => type switch
+    {
+        FlowerType.Dandelion => 10f,
+        FlowerType.Tulip => 5f,
+        FlowerType.Sunflower => 1f,
+        _ => 1f
+        
+    };
 }

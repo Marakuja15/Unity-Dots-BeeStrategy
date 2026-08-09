@@ -45,13 +45,19 @@ public partial class BeehivePlacementSystem : SystemBase
 
             if (Input.GetMouseButtonDown(0))
             {
-
-                // TODO: Check resurces
-                // TODO: EntityManager.Instantiate(prefabUla)
-                // TODO: position
-                // TODO: set teamid
+                if(!SystemAPI.TryGetSingletonBuffer<TeamDataElement>(out var teamsBuffer)) return;
+                if(!SystemAPI.TryGetSingleton<HivePrefab>(out var hive)) return;
+                var player = SystemAPI.GetSingleton<PlayerData>();
+                var playersTeam = teamsBuffer[player.TeamID];
                 
-                Debug.Log($"Zbudowano ul w punkcie: {hitPosition}");
+                if(!(playersTeam.storedWax < 100)) return;
+           
+ 
+                Entity prefab = EntityManager.Instantiate(hive.Value);
+                EntityManager.SetComponentData(prefab, LocalTransform.FromPosition(hitPosition));
+
+                EntityManager.AddComponentData(prefab, new TeamData { TeamID = player.TeamID });
+              
             }
         }
     }

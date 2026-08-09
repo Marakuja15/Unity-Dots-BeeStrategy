@@ -18,5 +18,6 @@ public struct FlowerData : IComponentData, IEnableableComponent
     public float3 position;
 
     public Entity owner;
+    public float nectar;
 
 }

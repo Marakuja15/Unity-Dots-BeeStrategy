@@ -1,5 +1,6 @@
 using Unity.Entities;
 using Unity.Burst;
+using Unity.Mathematics;
 
 [BurstCompile]
 public partial struct FlowerPollenSystem : ISystem
@@ -8,7 +9,7 @@ public partial struct FlowerPollenSystem : ISystem
     public void OnUpdate(ref SystemState state)
     {
         float deltaTime = SystemAPI.Time.DeltaTime;
-        float collectSpeed = 5f; 
+
         foreach (var (flower, flowerEnabled, growthEnabled) in
             SystemAPI.Query<RefRW<FlowerData>,
             EnabledRefRW<FlowerData>,
@@ -17,25 +18,22 @@ public partial struct FlowerPollenSystem : ISystem
         {
             if (flower.ValueRO.owner == Entity.Null) continue;
             if (SystemAPI.IsComponentEnabled<BeeMovementData>(flower.ValueRO.owner)) continue;
-          
-
-            float amountToCollect = collectSpeed * deltaTime;
+            if (!SystemAPI.TryGetComponent<BeeData>(flower.ValueRO.owner, out var beeData)) continue;
             
-           
-            if (amountToCollect > flower.ValueRO.pollen)
-            {
-                amountToCollect = flower.ValueRO.pollen;
-            }
+            float collectSpeed = beeData.collectSpeed;
+            float pollenToCollect = math.min(collectSpeed * deltaTime, flower.ValueRO.pollen);
+            flower.ValueRW.pollen -= pollenToCollect;
 
-            flower.ValueRW.pollen -= amountToCollect;
 
-            var bee = SystemAPI.GetComponentRW<BeeData>(flower.ValueRO.owner);
             var beeBuffer = SystemAPI.GetBuffer<PollenStorage>(flower.ValueRO.owner);
             int idx = (int)flower.ValueRO.type;
             var slot = beeBuffer[idx];
-            slot.Amount += amountToCollect;
+            slot.Amount += pollenToCollect;
             beeBuffer[idx] = slot;
-            
+            float nectarToCollect = math.min(collectSpeed * deltaTime, flower.ValueRO.nectar);
+            flower.ValueRW.nectar -= nectarToCollect;
+            var bee = SystemAPI.GetComponentRW<BeeData>(flower.ValueRO.owner);
+            bee.ValueRW.collectedNectar += nectarToCollect;
             if (flower.ValueRO.pollen <= 0)
             {
            
