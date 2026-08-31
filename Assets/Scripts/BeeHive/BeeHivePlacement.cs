@@ -52,7 +52,7 @@ public partial class BeehivePlacementSystem : SystemBase
                 EntityManager.AddComponentData(newHive, new TeamData { TeamID = player.TeamID });
                 
                 // Wyłącz tryb budowy po postawieniu ula
-                var hud = UnityEngine.Object.FindObjectOfType<GameHUDController>();
+                var hud = Object.FindAnyObjectByType<GameHUDController>();
                 if (hud != null) hud.CancelBuildMode();
             }
         }

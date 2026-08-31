@@ -5,7 +5,7 @@ using Unity.Collections;
 using Unity.Burst;
 using Unity.Jobs;
 //TODO: add update before teams bee behaviour
-
+[UpdateInGroup(typeof(InitializationSystemGroup))]
 [UpdateAfter(typeof(PollenCollectorSystem))]
 
 public partial struct DefenderSystem : ISystem

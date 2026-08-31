@@ -161,6 +161,33 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
+        <!-- ===== SELECTED HIVE PANEL ===== -->
+        <ui:VisualElement name="selected-hive-panel" class="popup-panel selected-panel" style="display: none;">
+            <ui:Label name="sh-title" text="Capital Hive 👑" class="panel-title"/>
+            
+            <ui:VisualElement class="panel-body">
+                <!-- Production -->
+                <ui:Label name="sh-cost" text="Cost per Bee: 25 Nectar" class="sh-info-text"/>
+                <ui:Label name="sh-slider-value" text="Production: 10 Bees / 5min" class="subsection-title" style="margin-top: 5px;"/>
+                <ui:Slider name="sh-production-slider" low-value="0" high-value="100" value="10" class="honey-slider"/>
+                
+                <ui:VisualElement class="panel-separator"/>
+
+                <!-- Population & Infrastructure -->
+                <ui:Label text="Population &amp; Education" class="subsection-title" style="margin-top: 5px;"/>
+                <ui:Label name="sh-uneducated" text="Uneducated: 0" class="sh-info-text"/>
+                <ui:Label name="sh-educated" text="Educated: 0" class="sh-info-text"/>
+                <ui:Button name="sh-build-school-btn" text="Build School (100 Wax)" class="sh-action-btn"/>
+
+                <ui:VisualElement class="panel-separator"/>
+
+                <!-- Deployment -->
+                <ui:Label name="sh-deploy-value" text="Extract: 0 Bees" class="subsection-title" style="margin-top: 5px;"/>
+                <ui:Slider name="sh-deploy-slider" low-value="0" high-value="10" value="0" class="honey-slider"/>
+                <ui:Button name="sh-deploy-btn" text="Extract Bees" class="sh-action-btn"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
         <!-- ===== WORLD SPACE UI (Floating Badges) ===== -->
         <ui:VisualElement name="world-space-ui" class="world-space-container" picking-mode="Ignore" />
 

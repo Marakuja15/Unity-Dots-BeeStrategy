@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UIElements;
 using Unity.Entities;
 using Unity.Collections;
+using Unity.Mathematics;
 using System.Collections.Generic;
 
 /// <summary>
@@ -35,6 +36,23 @@ public class GameHUDController : MonoBehaviour
     private Dictionary<string, Button> toolbarButtons;
     private string activePanel = null;
 
+    // ============ Selected Hive ============
+    private VisualElement selectedHivePanel;
+    private Label shTitle;
+    private Label shCost;
+    private Label shSliderValue;
+    private Slider shSlider;
+    
+    private Label shUneducated;
+    private Label shEducated;
+    private Button shBuildSchoolBtn;
+    
+    private Label shDeployValue;
+    private Slider shDeploySlider;
+    private Button shDeployBtn;
+    
+    private Entity selectedHiveEntity = Entity.Null;
+
     // ============ State ============
     public static bool BuildModeActive { get; private set; }
     private EntityManager entityManager;
@@ -64,6 +82,21 @@ public class GameHUDController : MonoBehaviour
         waxPercentLabel = root.Q<Label>("wax-percent");
         honeyPercentLabel = root.Q<Label>("honey-percent");
         conversionWorkersLabel = root.Q<Label>("conversion-workers");
+
+        // Selected Hive
+        selectedHivePanel = root.Q<VisualElement>("selected-hive-panel");
+        shTitle = root.Q<Label>("sh-title");
+        shCost = root.Q<Label>("sh-cost");
+        shSliderValue = root.Q<Label>("sh-slider-value");
+        shSlider = root.Q<Slider>("sh-production-slider");
+        
+        shUneducated = root.Q<Label>("sh-uneducated");
+        shEducated = root.Q<Label>("sh-educated");
+        shBuildSchoolBtn = root.Q<Button>("sh-build-school-btn");
+        
+        shDeployValue = root.Q<Label>("sh-deploy-value");
+        shDeploySlider = root.Q<Slider>("sh-deploy-slider");
+        shDeployBtn = root.Q<Button>("sh-deploy-btn");
 
         // Setup panels
         panels = new Dictionary<string, VisualElement>
@@ -96,6 +129,40 @@ public class GameHUDController : MonoBehaviour
         if (waxRatioSlider != null)
             waxRatioSlider.RegisterValueChangedCallback(OnWaxRatioChanged);
 
+        if (shSlider != null)
+        {
+            shSlider.RegisterValueChangedCallback(evt => {
+                if (selectedHiveEntity != Entity.Null && entityManager.Exists(selectedHiveEntity))
+                {
+                    var prod = entityManager.GetComponentData<HiveProduction>(selectedHiveEntity);
+                    prod.TargetBeesPer5Min = Mathf.RoundToInt(evt.newValue);
+                    entityManager.SetComponentData(selectedHiveEntity, prod);
+                    shSliderValue.text = $"Production: {prod.TargetBeesPer5Min} Bees / 5min";
+                }
+            });
+        }
+        
+        if (shDeploySlider != null)
+        {
+            shDeploySlider.RegisterValueChangedCallback(evt => {
+                shDeployValue.text = $"Extract: {Mathf.RoundToInt(evt.newValue)} Bees";
+            });
+        }
+        
+        if (shBuildSchoolBtn != null)
+        {
+            shBuildSchoolBtn.clicked += () => {
+                Debug.Log("Build School Clicked (UI Only - Not implemented in backend)");
+            };
+        }
+        
+        if (shDeployBtn != null)
+        {
+            shDeployBtn.clicked += () => {
+                Debug.Log($"Extracting {Mathf.RoundToInt(shDeploySlider.value)} Bees (UI Only)");
+            };
+        }
+
         // Disable law toggles (not yet implemented)
         var lawToggles = root.Query<Toggle>(className: "law-check").ToList();
         foreach (var toggle in lawToggles)
@@ -112,8 +179,93 @@ public class GameHUDController : MonoBehaviour
             initialized = true;
         }
 
+        HandleHiveSelection();
+
         UpdateResourceDisplay();
         UpdateProductionDisplay();
+    }
+
+    private void HandleHiveSelection()
+    {
+        if (UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame && !BuildModeActive && Camera.main != null)
+        {
+            var cameraRay = Camera.main.ScreenPointToRay(UnityEngine.InputSystem.Mouse.current.position.ReadValue());
+            float3 clickDir = cameraRay.direction;
+            float3 clickOrigin = cameraRay.origin;
+            
+            Entity closestHive = Entity.Null;
+            float minDst = 5.0f; // max selection distance in world units
+
+            var hiveQuery = entityManager.CreateEntityQuery(typeof(Unity.Transforms.LocalTransform), typeof(HiveProduction));
+            if (!hiveQuery.IsEmpty)
+            {
+                var hives = hiveQuery.ToEntityArray(Allocator.Temp);
+                foreach(var h in hives)
+                {
+                    float3 pos = entityManager.GetComponentData<Unity.Transforms.LocalTransform>(h).Position;
+                    // Point-to-line distance
+                    float3 w = pos - clickOrigin;
+                    float proj = Unity.Mathematics.math.dot(w, clickDir);
+                    float3 closestPoint = clickOrigin + clickDir * proj;
+                    float dst = Unity.Mathematics.math.distance(pos, closestPoint);
+                    
+                    if (dst < minDst)
+                    {
+                        minDst = dst;
+                        closestHive = h;
+                    }
+                }
+                hives.Dispose();
+            }
+
+            selectedHiveEntity = closestHive;
+            UpdateSelectedHivePanel();
+        }
+    }
+
+    private void UpdateSelectedHivePanel()
+    {
+        if (selectedHivePanel == null) return;
+
+        if (selectedHiveEntity != Entity.Null && entityManager.Exists(selectedHiveEntity))
+        {
+            selectedHivePanel.style.display = DisplayStyle.Flex;
+            var prod = entityManager.GetComponentData<HiveProduction>(selectedHiveEntity);
+            var pop = entityManager.GetComponentData<HivePopulation>(selectedHiveEntity);
+            var infra = entityManager.GetComponentData<HiveInfrastructure>(selectedHiveEntity);
+            
+            // Production section
+            if (shTitle != null) shTitle.text = prod.IsCapital ? "Capital Hive 👑" : "Outpost Hive";
+            if (shCost != null) shCost.text = prod.IsCapital ? "Cost per Bee: 25 Nectar" : "Cost per Bee: 50 Nectar";
+            if (shSliderValue != null) shSliderValue.text = $"Production: {prod.TargetBeesPer5Min} Bees / 5min";
+            if (shSlider != null) shSlider.SetValueWithoutNotify(prod.TargetBeesPer5Min);
+
+            // Population & Education section
+            if (shUneducated != null) shUneducated.text = $"Uneducated: {pop.uneducatedBees}";
+            if (shEducated != null) shEducated.text = $"Educated: {pop.educatedBees}";
+            
+            if (shBuildSchoolBtn != null)
+            {
+                shBuildSchoolBtn.SetEnabled(!infra.hasSchool);
+                shBuildSchoolBtn.text = infra.hasSchool ? "School Built" : "Build School (100 Wax)";
+            }
+
+            // Deployment section
+            if (shDeploySlider != null)
+            {
+                shDeploySlider.highValue = pop.educatedBees;
+                // Clamp current value if it exceeds new max
+                float clampedValue = Mathf.Clamp(shDeploySlider.value, 0, pop.educatedBees);
+                shDeploySlider.SetValueWithoutNotify(clampedValue);
+                if (shDeployValue != null) shDeployValue.text = $"Extract: {Mathf.RoundToInt(clampedValue)} Bees";
+                
+                if (shDeployBtn != null) shDeployBtn.SetEnabled(clampedValue > 0);
+            }
+        }
+        else
+        {
+            selectedHivePanel.style.display = DisplayStyle.None;
+        }
     }
 
     // =============================================

@@ -22,6 +22,23 @@ public class BeeHiveAuthoring : MonoBehaviour
             {
                 position = authoring.entrance
             });
+            AddComponent(entity, new HiveProduction
+            {
+                TargetBeesPer5Min = 10, // Domyślnie 10 pszczół na 5 minut
+                SpawnTimer = 0f,
+                IsCapital = false // Zmienimy to na true dla pierwszego ula w przyszłości
+            });
+            AddComponent(entity, new HiveInfrastructure { hasSchool = false });
+            
+            // Override the default HivePopulation to give us some UI test data
+            SetComponent(entity, new HivePopulation
+            {
+                citizens = authoring.citizens,
+                defenders = authoring.cityDefenders,
+                conversionWorkers = 0,
+                uneducatedBees = 5,
+                educatedBees = 10
+            });
             var buffer = AddBuffer<PollenStorage>(entity);
             foreach (FlowerType type in FlowerTypeInfo.GetAllTypes())
             {
