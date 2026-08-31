@@ -514,6 +514,8 @@ GameObject:
   - component: {fileID: 1705485512}
   - component: {fileID: 1705485511}
   - component: {fileID: 1705485513}
+  - component: {fileID: 1705485514}
+  - component: {fileID: 1705485515}
   m_Layer: 0
   m_Name: UI
   m_TagString: Untagged
@@ -535,7 +537,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: UnityEngine.dll::UnityEngine.UIElements.UIDocument
   m_PanelSettings: {fileID: 11400000, guid: d6fee28dd494ab9439e15d34a5dbb97e, type: 2}
   m_ParentUI: {fileID: 0}
-  sourceAsset: {fileID: 9197481963319205126, guid: e99357d5efb378f48908d057085dfbb5, type: 3}
+  sourceAsset: {fileID: 9197481963319205126, guid: af8298a158441904699ddd7a94273410, type: 3}
   m_SortingOrder: 0
   m_Position: 0
   m_WorldSpaceSizeMode: 1
@@ -571,6 +573,30 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a3c8116e6281a5041bfb2f6922db6c41, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::UIManger
+--- !u!114 &1705485514
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1705485510}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e41475326c8378a4b8e7dc8382069468, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameHUDController
+--- !u!114 &1705485515
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1705485510}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52cfb36b20a87fe4d9e4eef95454f088, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HiveWorldUIController
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

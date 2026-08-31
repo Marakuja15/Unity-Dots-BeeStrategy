@@ -1,4 +1,3 @@
-using System.Numerics;
 using Unity.Entities;
 using Unity.Mathematics;
 

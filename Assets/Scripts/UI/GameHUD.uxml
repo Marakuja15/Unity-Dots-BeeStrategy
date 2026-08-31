@@ -1,0 +1,168 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <Style src="./GameHUD.uss" />
+    <ui:VisualElement name="root" class="root">
+
+        <!-- ===== TOP: Resource Bar ===== -->
+        <ui:VisualElement class="top-container">
+            <ui:VisualElement name="resource-bar" class="resource-bar">
+                <ui:VisualElement class="res-item">
+                    <ui:Label text="Pollen" class="res-label"/>
+                    <ui:Label name="pollen-dandelion" text="0" class="res-value dandelion"/>
+                    <ui:Label name="pollen-tulip" text="0" class="res-value tulip"/>
+                    <ui:Label name="pollen-sunflower" text="0" class="res-value sunflower"/>
+                </ui:VisualElement>
+                <ui:Label text="|" class="res-divider"/>
+                <ui:VisualElement class="res-item">
+                    <ui:Label text="Nectar" class="res-label"/>
+                    <ui:Label name="nectar" text="0" class="res-value"/>
+                </ui:VisualElement>
+                <ui:Label text="|" class="res-divider"/>
+                <ui:VisualElement class="res-item">
+                    <ui:Label text="Wax" class="res-label"/>
+                    <ui:Label name="wax" text="0" class="res-value"/>
+                </ui:VisualElement>
+                <ui:Label text="|" class="res-divider"/>
+                <ui:VisualElement class="res-item">
+                    <ui:Label text="Honey" class="res-label"/>
+                    <ui:Label name="honey" text="0" class="res-value"/>
+                </ui:VisualElement>
+                <ui:Label text="|" class="res-divider"/>
+                <ui:VisualElement class="res-item">
+                    <ui:Label text="Bees" class="res-label"/>
+                    <ui:Label name="bee-count" text="0" class="res-value bees"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ===== MIDDLE: Spacer ===== -->
+        <ui:VisualElement class="spacer"/>
+
+        <!-- ===== POPUP PANELS (hidden by default) ===== -->
+        <ui:VisualElement class="panels-container">
+
+            <!-- Build Panel -->
+            <ui:VisualElement name="build-panel" class="popup-panel" style="display:none;">
+                <ui:Label text="Build" class="panel-title"/>
+                <ui:VisualElement class="panel-body">
+                    <ui:VisualElement class="build-option">
+                        <ui:Label text="Beehive" class="build-name"/>
+                        <ui:Label text="0 Wax" class="build-cost"/>
+                        <ui:Button name="build-hive-btn" text="Place" class="btn-place"/>
+                    </ui:VisualElement>
+                    <ui:Label name="build-status" text="" class="panel-status"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="panel-arrow"/>
+            </ui:VisualElement>
+
+            <!-- Workers Panel -->
+            <ui:VisualElement name="workers-panel" class="popup-panel" style="display:none;">
+                <ui:Label text="Workers" class="panel-title"/>
+                <ui:VisualElement class="panel-body">
+                    <ui:VisualElement class="worker-row">
+                        <ui:Label text="Collectors" class="w-name"/>
+                        <ui:Label name="worker-collectors" text="--" class="w-count"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="worker-row">
+                        <ui:Label text="Scouts" class="w-name"/>
+                        <ui:Label name="worker-scouts" text="--" class="w-count"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="worker-row">
+                        <ui:Label text="Defenders" class="w-name"/>
+                        <ui:Label name="worker-defenders" text="--" class="w-count"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="worker-row">
+                        <ui:Label text="Attackers" class="w-name"/>
+                        <ui:Label name="worker-attackers" text="--" class="w-count"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="panel-separator"/>
+                    <ui:Label text="Wax / Honey Production" class="subsection-title"/>
+                    <ui:Slider name="wax-ratio-slider" low-value="0" high-value="1" value="0.5" class="honey-slider"/>
+                    <ui:VisualElement class="ratio-row">
+                        <ui:Label name="wax-percent" text="Wax 50%" class="ratio-text"/>
+                        <ui:Label name="honey-percent" text="Honey 50%" class="ratio-text"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="worker-row">
+                        <ui:Label text="Conversion Workers" class="w-name"/>
+                        <ui:Label name="conversion-workers" text="0" class="w-count"/>
+                    </ui:VisualElement>
+                    <ui:Label text="Worker management coming soon" class="coming-soon"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="panel-arrow"/>
+            </ui:VisualElement>
+
+            <!-- Laws Panel -->
+            <ui:VisualElement name="laws-panel" class="popup-panel" style="display:none;">
+                <ui:Label text="Book of Laws" class="panel-title"/>
+                <ui:VisualElement class="panel-body">
+                    <ui:VisualElement class="law-item disabled">
+                        <ui:Toggle name="law-military-collects" class="law-check"/>
+                        <ui:Label text="Military Collects Pollen" class="law-text"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="law-item disabled">
+                        <ui:Toggle name="law-free-education" class="law-check"/>
+                        <ui:Label text="Free Education" class="law-text"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="law-item disabled">
+                        <ui:Toggle name="law-conscription" class="law-check"/>
+                        <ui:Label text="Conscription" class="law-text"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="law-item disabled">
+                        <ui:Toggle name="law-forced-labor" class="law-check"/>
+                        <ui:Label text="Forced Labor" class="law-text"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="law-item disabled">
+                        <ui:Toggle name="law-desertion-penalty" class="law-check"/>
+                        <ui:Label text="Desertion Penalty" class="law-text"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="law-item disabled">
+                        <ui:Toggle name="law-freedom-speech" class="law-check"/>
+                        <ui:Label text="Freedom of Speech" class="law-text"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="panel-separator"/>
+                    <ui:VisualElement class="regime-row">
+                        <ui:Label text="Regime" class="w-name"/>
+                        <ui:Label name="regime-label" text="Undetermined" class="regime-value"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="regime-row">
+                        <ui:Label text="Happiness" class="w-name"/>
+                        <ui:Label name="happiness-label" text="--" class="w-count"/>
+                    </ui:VisualElement>
+                    <ui:Label text="Laws system coming soon" class="coming-soon"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="panel-arrow"/>
+            </ui:VisualElement>
+
+            <!-- Trade Panel -->
+            <ui:VisualElement name="trade-panel" class="popup-panel" style="display:none;">
+                <ui:Label text="Trade" class="panel-title"/>
+                <ui:VisualElement class="panel-body">
+                    <ui:VisualElement class="regime-row">
+                        <ui:Label text="Pollen Value" class="w-name"/>
+                        <ui:Label name="pollen-value" text="--" class="w-count"/>
+                    </ui:VisualElement>
+                    <ui:VisualElement class="regime-row">
+                        <ui:Label text="Active Trades" class="w-name"/>
+                        <ui:Label name="active-trades" text="--" class="w-count"/>
+                    </ui:VisualElement>
+                    <ui:Label text="Trade system coming soon" class="coming-soon"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="panel-arrow"/>
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+        <!-- ===== BOTTOM: Toolbar ===== -->
+        <ui:VisualElement class="toolbar-container">
+            <ui:VisualElement name="toolbar" class="toolbar">
+                <ui:Button name="btn-build" text="Build" class="toolbar-btn"/>
+                <ui:Button name="btn-workers" text="Workers" class="toolbar-btn"/>
+                <ui:Button name="btn-laws" text="Laws" class="toolbar-btn"/>
+                <ui:Button name="btn-trade" text="Trade" class="toolbar-btn"/>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- ===== WORLD SPACE UI (Floating Badges) ===== -->
+        <ui:VisualElement name="world-space-ui" class="world-space-container" picking-mode="Ignore" />
+
+    </ui:VisualElement>
+</ui:UXML>

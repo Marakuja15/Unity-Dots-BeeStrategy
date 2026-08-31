@@ -1,45 +1,39 @@
 using Unity.Entities;
 using Unity.Burst;
 
-
 [UpdateBefore(typeof(ReturnToHiveSystem))]
 public partial struct UnloadPollenSystem : ISystem
 {
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        foreach (var (beeData, team, flowerAssgnEnabled,returnEnabled, beeEntity) in
-                 SystemAPI.Query<RefRW<BeeData>, RefRO<TeamData>,
+        foreach (var (carrier, hiveAssignment, team, flowerAssgnEnabled, returnEnabled, beeEntity) in
+                 SystemAPI.Query<RefRW<BeeCarrier>, RefRO<HiveAssignment>, RefRO<TeamData>,
                  EnabledRefRW<NeedsFlowerAssignment>,
                  EnabledRefRW<ReturnToHive>>()
                  .WithDisabled<BeeMovementData, NeedsFlowerAssignment>()
-                 .WithAll<ReturnToHive, PollenCollector>().WithEntityAccess()
-                
-                 )
+                 .WithAll<ReturnToHive, PollenCollector>().WithEntityAccess())
         {
-                if(beeData.ValueRO.currentHive == Entity.Null) continue;
-                
-                var hiveData = SystemAPI.GetComponentRW<BeeHiveData>(beeData.ValueRO.currentHive);
-                var hiveBuffer = SystemAPI.GetBuffer<PollenStorage>(beeData.ValueRO.currentHive);
-                var beeBuffer = SystemAPI.GetBuffer<PollenStorage>(beeEntity);
-                for (int i = 0; i < beeBuffer.Length; i++)
-                {
-                    var hiveSlot = hiveBuffer[i];
-                    hiveSlot.Amount += beeBuffer[i].Amount;
-                    hiveBuffer[i] = hiveSlot;
-    
-                    var beeSlot = beeBuffer[i];
-                    beeSlot.Amount = 0;
-                    beeBuffer[i] = beeSlot;
-                }
-                hiveData.ValueRW.storedNectar += beeData.ValueRO.collectedNectar;
-                beeData.ValueRW.collectedNectar = 0;
-            
+            if (hiveAssignment.ValueRO.currentHive == Entity.Null) continue;
 
-                returnEnabled.ValueRW = false;
-                flowerAssgnEnabled.ValueRW = true;
+            var hiveResources = SystemAPI.GetComponentRW<HiveResources>(hiveAssignment.ValueRO.currentHive);
+            var hiveBuffer = SystemAPI.GetBuffer<PollenStorage>(hiveAssignment.ValueRO.currentHive);
+            var beeBuffer = SystemAPI.GetBuffer<PollenStorage>(beeEntity);
+            for (int i = 0; i < beeBuffer.Length; i++)
+            {
+                var hiveSlot = hiveBuffer[i];
+                hiveSlot.Amount += beeBuffer[i].Amount;
+                hiveBuffer[i] = hiveSlot;
 
+                var beeSlot = beeBuffer[i];
+                beeSlot.Amount = 0;
+                beeBuffer[i] = beeSlot;
+            }
+            hiveResources.ValueRW.storedNectar += carrier.ValueRO.collectedNectar;
+            carrier.ValueRW.collectedNectar = 0;
 
+            returnEnabled.ValueRW = false;
+            flowerAssgnEnabled.ValueRW = true;
         }
     }
 }

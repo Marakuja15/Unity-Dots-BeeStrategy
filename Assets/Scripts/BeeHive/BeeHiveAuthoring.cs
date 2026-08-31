@@ -1,15 +1,9 @@
-
-
 using Unity.Entities;
-
 using UnityEngine;
 
 public class BeeHiveAuthoring : MonoBehaviour
 {
-
-
     public int cityDefenders;
-
     public int citizens;
     public Vector3 entrance;
 
@@ -17,23 +11,22 @@ public class BeeHiveAuthoring : MonoBehaviour
     {
         public override void Bake(BeeHiveAuthoring authoring)
         {
-       
-            var entity = GetEntity(TransformUsageFlags.Dynamic); 
-            AddComponent(entity, new BeeHiveData
+            var entity = GetEntity(TransformUsageFlags.Dynamic);
+            AddComponent(entity, new HiveResources());
+            AddComponent(entity, new HivePopulation
             {
-                citiyDefenders = authoring.cityDefenders,
-           
-                citizens = authoring.citizens,
-                entrance = authoring.entrance
-    
+                defenders = authoring.cityDefenders,
+                citizens = authoring.citizens
             });
-           var buffer = AddBuffer<PollenStorage>(entity);
-           foreach (FlowerType type in FlowerTypeInfo.GetAllTypes())
+            AddComponent(entity, new HiveEntrance
+            {
+                position = authoring.entrance
+            });
+            var buffer = AddBuffer<PollenStorage>(entity);
+            foreach (FlowerType type in FlowerTypeInfo.GetAllTypes())
             {
                 buffer.Add(new PollenStorage { Type = type, Amount = 0 });
             }
-           
-     
         }
     }
 }

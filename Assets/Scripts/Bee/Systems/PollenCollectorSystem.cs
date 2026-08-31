@@ -22,7 +22,7 @@ public partial struct PollenCollectorSystem : ISystem
   
         pollenCollectorQuery = SystemAPI.QueryBuilder()
             .WithAll<PollenCollector, NeedsFlowerAssignment>()
-            .WithAllRW<BeeMovementData, BeeData>()
+            .WithAllRW<BeeMovementData, BeeCarrier>()
             .WithAll<LocalTransform>()
             .Build();
  
@@ -74,7 +74,7 @@ public partial struct PollenCollectorJob : IJobEntity
     void Execute(
         Entity beeEntity,
         ref BeeMovementData beeMovementData,
-        ref BeeData beeData,
+        ref BeeCarrier carrierData,
         in LocalTransform transform,
         EnabledRefRW<NeedsFlowerAssignment> needsFlowerEnabled,
         EnabledRefRW<ReturnToHive> returnToHiveEnabled,
@@ -84,7 +84,7 @@ public partial struct PollenCollectorJob : IJobEntity
         float total = 0;
         for (int i = 0; i < pollenBuffer.Length; i++)
             total += pollenBuffer[i].Amount;
-        if (total >= beeData.maxPollen)
+        if (total >= carrierData.maxPollen)
         {
             needsFlowerEnabled.ValueRW = false;
             returnToHiveEnabled.ValueRW = true;

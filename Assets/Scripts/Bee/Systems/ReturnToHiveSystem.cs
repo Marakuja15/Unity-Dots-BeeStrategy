@@ -8,22 +8,19 @@ public partial struct ReturnToHiveSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-
-
-        foreach (var (beeData, movement, transform, team, movementEnabled) in
-                 SystemAPI.Query<RefRW<BeeData>, RefRW<BeeMovementData>, RefRO<LocalTransform>, RefRO<TeamData>,
+        foreach (var (hiveAssignment, movement, transform, team, movementEnabled) in
+                 SystemAPI.Query<RefRW<HiveAssignment>, RefRW<BeeMovementData>, RefRO<LocalTransform>, RefRO<TeamData>,
                  EnabledRefRW<BeeMovementData>>()
                  .WithDisabled<BeeMovementData>()
                  .WithAll<ReturnToHive>())
         {
-      
             float3 beePos = transform.ValueRO.Position;
             float closestDist = float.MaxValue;
             Entity closestHive = Entity.Null;
 
-      
-            foreach (var (hiveData, hiveTransform, hiveTeam, hiveEntity) in
-                     SystemAPI.Query<RefRO<BeeHiveData>, RefRO<LocalTransform>, RefRO<TeamData>>()
+            foreach (var (hiveTransform, hiveTeam, hiveEntity) in
+                     SystemAPI.Query<RefRO<LocalTransform>, RefRO<TeamData>>()
+                     .WithAll<HiveResources>()
                      .WithEntityAccess())
             {
                 if (hiveTeam.ValueRO.TeamID != team.ValueRO.TeamID) continue;
@@ -36,12 +33,11 @@ public partial struct ReturnToHiveSystem : ISystem
                     movement.ValueRW.moveLocation = hiveTransform.ValueRO.Position;
                 }
             }
-            
 
             if (closestHive != Entity.Null)
             {
                 movementEnabled.ValueRW = true;
-                beeData.ValueRW.currentHive = closestHive;
+                hiveAssignment.ValueRW.currentHive = closestHive;
             }
         }
     }

@@ -3,7 +3,7 @@ using Unity.Physics;
 using Unity.Mathematics;
 using Unity.Transforms;
 using UnityEngine;
-using RaycastHit = Unity.Physics.RaycastHit; 
+using RaycastHit = Unity.Physics.RaycastHit;
 
 [UpdateInGroup(typeof(SimulationSystemGroup))]
 public partial class BeehivePlacementSystem : SystemBase
@@ -12,52 +12,48 @@ public partial class BeehivePlacementSystem : SystemBase
     {
         RequireForUpdate<PhysicsWorldSingleton>();
         // requires configs in the future
-        // np. RequireForUpdate<BuildingConfigData>(); 
+        // np. RequireForUpdate<BuildingConfigData>();
     }
 
     protected override void OnUpdate()
     {
+        // Only active when player clicked "Build Hive" in HUD
+        if (!GameHUDController.BuildModeActive) return;
+        if (Camera.main == null || UnityEngine.InputSystem.Mouse.current == null) return;
 
-        if (Camera.main == null) return;
-
-   
-        var physicsWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
-
-      
-        UnityEngine.Ray cameraRay = Camera.main.ScreenPointToRay(Input.mousePosition);
-
-   
-        float3 rayStart = cameraRay.origin;
-        float3 rayEnd = cameraRay.GetPoint(1000f);
-
-        RaycastInput input = new RaycastInput
+        // Czekamy na kliknięcie
+        if (UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame)
         {
-            Start = rayStart,
-            End = rayEnd,
-            Filter = CollisionFilter.Default 
-        };
+            var physicsWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
+            UnityEngine.Ray cameraRay = Camera.main.ScreenPointToRay(UnityEngine.InputSystem.Mouse.current.position.ReadValue());
 
-
-        if (physicsWorld.CastRay(input, out RaycastHit hit))
-        {
-            float3 hitPosition = hit.Position;
-
-
-            if (Input.GetMouseButtonDown(0))
+            RaycastInput input = new RaycastInput
             {
-                if(!SystemAPI.TryGetSingletonBuffer<TeamDataElement>(out var teamsBuffer)) return;
-                if(!SystemAPI.TryGetSingleton<HivePrefab>(out var hive)) return;
-                var player = SystemAPI.GetSingleton<PlayerData>();
+                Start = cameraRay.origin,
+                End = cameraRay.GetPoint(1000f),
+                Filter = CollisionFilter.Default
+            };
+
+            if (physicsWorld.CastRay(input, out RaycastHit hit))
+            {
+                if (!SystemAPI.TryGetSingletonBuffer<TeamDataElement>(out var teamsBuffer)) return;
+                if (!SystemAPI.TryGetSingleton<HivePrefab>(out var hive)) return;
+                if (!SystemAPI.TryGetSingleton<PlayerData>(out var player)) return;
+
                 var playersTeam = teamsBuffer[player.TeamID];
                 
-                if(!(playersTeam.storedWax < 100)) return;
-           
- 
-                Entity prefab = EntityManager.Instantiate(hive.Value);
-                EntityManager.SetComponentData(prefab, LocalTransform.FromPosition(hitPosition));
+                // Tymczasowo darmowe ule
+                // if (playersTeam.storedWax < 100) return;
+                // playersTeam.storedWax -= 100;
+                // teamsBuffer[player.TeamID] = playersTeam;
 
-                EntityManager.AddComponentData(prefab, new TeamData { TeamID = player.TeamID });
-              
+                Entity newHive = EntityManager.Instantiate(hive.Value);
+                EntityManager.SetComponentData(newHive, LocalTransform.FromPosition(hit.Position));
+                EntityManager.AddComponentData(newHive, new TeamData { TeamID = player.TeamID });
+                
+                // Wyłącz tryb budowy po postawieniu ula
+                var hud = UnityEngine.Object.FindObjectOfType<GameHUDController>();
+                if (hud != null) hud.CancelBuildMode();
             }
         }
     }

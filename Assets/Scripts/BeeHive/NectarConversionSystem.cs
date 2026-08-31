@@ -2,34 +2,26 @@ using Unity.Entities;
 using Unity.Burst;
 using Unity.Mathematics;
 
-
 public partial struct NectarConversionSystem : ISystem
 {
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        foreach (var (hiveData, team) in
-                 SystemAPI.Query<RefRW<BeeHiveData>,
-                  RefRO<TeamData>>()
-                
-                 )
+        foreach (var (resources, population) in
+                 SystemAPI.Query<RefRW<HiveResources>,
+                  RefRO<HivePopulation>>())
         {
-          
-            
             float conversionRate = 5f;
-            for(int i = 0; i < hiveData.ValueRO.conversionWorkers; i++)
+            for (int i = 0; i < population.ValueRO.conversionWorkers; i++)
             {
                 conversionRate += 0.5f;
             }
             float deltaTime = SystemAPI.Time.DeltaTime;
-            float nectarToConvert = math.min(conversionRate * deltaTime, hiveData.ValueRO.storedNectar);
+            float nectarToConvert = math.min(conversionRate * deltaTime, resources.ValueRO.storedNectar);
 
-            hiveData.ValueRW.storedWax   += nectarToConvert * hiveData.ValueRO.waxRatio;
-            hiveData.ValueRW.storedHoney += nectarToConvert * (1f - hiveData.ValueRO.waxRatio);
-            hiveData.ValueRW.storedNectar -= nectarToConvert;
-            
-
-
+            resources.ValueRW.storedWax   += nectarToConvert * resources.ValueRO.waxRatio;
+            resources.ValueRW.storedHoney += nectarToConvert * (1f - resources.ValueRO.waxRatio);
+            resources.ValueRW.storedNectar -= nectarToConvert;
         }
     }
 }
