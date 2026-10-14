@@ -1,14 +1,15 @@
 using Unity.Entities;
 using Unity.Burst;
 
+[UpdateInGroup(typeof(InitializationSystemGroup))]
 [UpdateBefore(typeof(ReturnToHiveSystem))]
 public partial struct UnloadPollenSystem : ISystem
 {
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        foreach (var (carrier, hiveAssignment, team, flowerAssgnEnabled, returnEnabled, beeEntity) in
-                 SystemAPI.Query<RefRW<BeeCarrier>, RefRO<HiveAssignment>, RefRO<TeamData>,
+        foreach (var (carrier, hiveAssignment, team, task, flowerAssgnEnabled, returnEnabled, beeEntity) in
+                 SystemAPI.Query<RefRW<BeeCarrier>, RefRO<HiveAssignment>, RefRO<TeamData>, RefRW<BeeTaskState>,
                  EnabledRefRW<NeedsFlowerAssignment>,
                  EnabledRefRW<ReturnToHive>>()
                  .WithDisabled<BeeMovementData, NeedsFlowerAssignment>()
@@ -34,6 +35,9 @@ public partial struct UnloadPollenSystem : ISystem
 
             returnEnabled.ValueRW = false;
             flowerAssgnEnabled.ValueRW = true;
+            task.ValueRW.Activity = BeeActivity.SearchingForFlower;
+            task.ValueRW.TargetEntity = Entity.Null;
+            task.ValueRW.TargetPosition = Unity.Mathematics.float3.zero;
         }
     }
 }

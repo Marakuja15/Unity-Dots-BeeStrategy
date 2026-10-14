@@ -20,12 +20,14 @@ public partial class BeehivePlacementSystem : SystemBase
         // Only active when player clicked "Build Hive" in HUD
         if (!GameHUDController.BuildModeActive) return;
         if (Camera.main == null || UnityEngine.InputSystem.Mouse.current == null) return;
+        var mousePosition = UnityEngine.InputSystem.Mouse.current.position.ReadValue();
+        if (GameHUDController.IsPointerOverUI(mousePosition)) return;
 
         // Czekamy na kliknięcie
         if (UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame)
         {
             var physicsWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
-            UnityEngine.Ray cameraRay = Camera.main.ScreenPointToRay(UnityEngine.InputSystem.Mouse.current.position.ReadValue());
+            UnityEngine.Ray cameraRay = Camera.main.ScreenPointToRay(mousePosition);
 
             RaycastInput input = new RaycastInput
             {

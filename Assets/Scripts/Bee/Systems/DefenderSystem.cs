@@ -20,6 +20,7 @@ public partial struct DefenderSystem : ISystem
     public void OnCreate(ref SystemState state)
     {
         state.RequireForUpdate<GridData>();
+        state.RequireForUpdate<GridSystemData>();
         pureDefenderQuery = SystemAPI.QueryBuilder()
         .WithAll<Defender, LocalTransform>()
         .WithDisabled<BeeMovementData>().
@@ -30,10 +31,12 @@ public partial struct DefenderSystem : ISystem
     [BurstCompile]
     public void OnUpdate(ref SystemState state)
     {
-        var gridData = SystemAPI.GetSingleton<GridData>();
+        if (!SystemAPI.TryGetSingleton<GridData>(out var gridData) ||
+            !SystemAPI.TryGetSingleton<GridSystemData>(out var gridSystemData))
+            return;
         
         if (gridData.Grid.Count() == 0) return;
-        int cellSize = SystemAPI.GetSingleton<GridSystemData>().cellSize;
+        int cellSize = math.max(1, gridSystemData.cellSize);
         uint randomSeed = (uint)(SystemAPI.Time.ElapsedTime * 1000) + 1;
         var PDjob = new PureDefenderJob
         {
@@ -43,8 +46,7 @@ public partial struct DefenderSystem : ISystem
             seedOffset = 0
 
         };
-        var handle1 = PDjob.ScheduleParallel(pureDefenderQuery, state.Dependency);
-
+        state.Dependency = PDjob.ScheduleParallel(pureDefenderQuery, state.Dependency);
 
     }
 }

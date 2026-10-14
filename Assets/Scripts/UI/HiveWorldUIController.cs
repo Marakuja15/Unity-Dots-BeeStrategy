@@ -14,6 +14,7 @@ public class HiveWorldUIController : MonoBehaviour
 {
     private VisualElement worldContainer;
     private EntityManager entityManager;
+    private World gameWorld;
     private bool initialized;
     private EntityQuery hiveQuery;
     private EntityQuery playerQuery;
@@ -29,16 +30,30 @@ public class HiveWorldUIController : MonoBehaviour
         }
     }
 
+    void OnDisable()
+    {
+        ClearAllBadges();
+        DisposeWorldQueries();
+        worldContainer = null;
+    }
+
     void Update()
     {
         if (worldContainer == null || Camera.main == null) return;
 
+        var currentWorld = World.DefaultGameObjectInjectionWorld;
+        if (initialized && gameWorld != currentWorld)
+        {
+            ClearAllBadges();
+            DisposeWorldQueries();
+        }
+
         if (!initialized)
         {
-            var world = World.DefaultGameObjectInjectionWorld;
-            if (world == null || !world.IsCreated) return;
+            if (currentWorld == null || !currentWorld.IsCreated) return;
             
-            entityManager = world.EntityManager;
+            gameWorld = currentWorld;
+            entityManager = currentWorld.EntityManager;
             // Query for everything we need to draw a hive badge
             hiveQuery = entityManager.CreateEntityQuery(
                 typeof(HiveResources), 
@@ -97,6 +112,18 @@ public class HiveWorldUIController : MonoBehaviour
             activeBadges.Remove(e);
 
         hiveEntities.Dispose();
+    }
+
+    private void DisposeWorldQueries()
+    {
+        if (initialized && gameWorld != null && gameWorld.IsCreated)
+        {
+            hiveQuery.Dispose();
+            playerQuery.Dispose();
+        }
+
+        initialized = false;
+        gameWorld = null;
     }
 
     private VisualElement CreateBadge()

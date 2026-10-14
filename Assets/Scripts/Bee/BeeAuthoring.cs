@@ -1,4 +1,5 @@
 using Unity.Entities;
+using Unity.Mathematics;
 using UnityEngine;
 
 public class BeeAuthoring : MonoBehaviour
@@ -30,6 +31,12 @@ public class BeeAuthoring : MonoBehaviour
                 collectSpeed = authoring.collectSpeed
             });
             AddComponent(entity, new HiveAssignment());
+            AddComponent(entity, new BeeTaskState
+            {
+                Activity = BeeActivity.SearchingForFlower,
+                TargetEntity = Entity.Null,
+                TargetPosition = float3.zero
+            });
             AddComponent(entity, new BeeMovementData
             {
                 speed = authoring.speed,

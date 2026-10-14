@@ -513,7 +513,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1705485512}
   - component: {fileID: 1705485511}
-  - component: {fileID: 1705485513}
   - component: {fileID: 1705485514}
   - component: {fileID: 1705485515}
   m_Layer: 0
@@ -561,18 +560,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1705485513
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1705485510}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a3c8116e6281a5041bfb2f6922db6c41, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::UIManger
 --- !u!114 &1705485514
 MonoBehaviour:
   m_ObjectHideFlags: 0

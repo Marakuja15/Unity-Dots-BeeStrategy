@@ -26,11 +26,14 @@ public partial struct FlowerSpawnerSystem : ISystem
 
         if(spawner.ValueRO.numToSpawn < 1) return;
 
-        var random = Random.CreateFromIndex((uint)SystemAPI.Time.ElapsedTime * 1000 + 1);
+        uint seed = (uint)(SystemAPI.Time.ElapsedTime * 1000.0) + 1u;
+        if (seed == 0) seed = 1;
+        var random = Random.CreateFromIndex(seed);
         var ecbSingleton = SystemAPI.GetSingleton<BeginSimulationEntityCommandBufferSystem.Singleton>();
         var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
         var physicsWorld = SystemAPI.GetSingleton<PhysicsWorldSingleton>().CollisionWorld;
-        int spawnPerFrame = math.min(spawner.ValueRO.numToSpawn, 1000);
+        int spawnPerFrame = math.min(spawner.ValueRO.numToSpawn, 250);
+        int spawned = 0;
 
         for(int i = 0; i < spawnPerFrame; i++)
         {
@@ -59,7 +62,7 @@ public partial struct FlowerSpawnerSystem : ISystem
                 }
                 Entity newFlower = ecb.Instantiate(spawner.ValueRO.prefab);
                 float3 hitPosition = hit.Position;
-                ecb.AddComponent(newFlower, LocalTransform.FromPosition(hitPosition));
+                ecb.SetComponent(newFlower, LocalTransform.FromPosition(hitPosition));
                 var flowerData = SystemAPI.GetComponent<FlowerData>(spawner.ValueRO.prefab);
                 var growthData = SystemAPI.GetComponent<GrowthData>(spawner.ValueRO.prefab);
                 ecb.SetComponent(newFlower, flowerData);
@@ -67,9 +70,10 @@ public partial struct FlowerSpawnerSystem : ISystem
 
                 ecb.SetComponentEnabled<FlowerData>(newFlower, true);
                 ecb.SetComponentEnabled<GrowthData>(newFlower, false);
+                spawned++;
             }
-            spawner.ValueRW.numToSpawn -= 1;
         }
-      
+
+        spawner.ValueRW.numToSpawn -= spawned;
     }
 }

@@ -1,7 +1,10 @@
-# Unity DOTS Bee Strategy 
+# Unity DOTS Bee Strategy
 
-⚠️ **DISCLAIMER: This project is unfinished and is not a playable game.**  
-This repository does not contain a complete gameplay loop or playable mechanics. It serves **exclusively as a code portfolio** to showcase my ability to design and implement highly optimized, multithreaded systems using Unity's Data-Oriented Technology Stack (DOTS), Entity Component System (ECS), the C# Job System, and the Burst Compiler.
+This project now includes a small playable simulation prototype built with Unity Entities (DOTS). Open `Assets/Scenes/SampleScene.unity` and enter Play mode. The scene starts with a hive, 300 bees, and 50 flowers.
+
+The HUD shows live bee activity, flower availability, colony resources, and controls for adding bees or flowers. The add fields default to 1,000; spawning is spread across frames, and each queue accepts up to 20,000 pending entities. Click a bee in the field to inspect its current task, target, carried pollen and nectar, and home hive. Use **Build → Place** to place another hive on the ground.
+
+The worker, law, trade, school, and bee extraction controls are still placeholders. The goal of this prototype is to make the gathering, return-to-hive, and resource loop visible and easy to stress with thousands of entities.
 
 ---
 

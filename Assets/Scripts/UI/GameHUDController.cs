@@ -1,18 +1,24 @@
-using UnityEngine;
-using UnityEngine.UIElements;
-using Unity.Entities;
-using Unity.Collections;
-using Unity.Mathematics;
+using System;
+using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Mathematics;
+using Unity.Transforms;
+using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
+using UnityEngine.UIElements;
 
-/// <summary>
-/// Main game HUD controller.
-/// Toolbar buttons toggle popup panels. Only one panel open at a time.
-/// Attach to a GameObject with a UIDocument component.
-/// </summary>
 public class GameHUDController : MonoBehaviour
 {
-    // ============ Resource Labels ============
+    private const int MaxQueuedSpawns = 20000;
+    private const float HudRefreshInterval = 0.25f;
+    private const float BeeSelectionRadius = 30f;
+
+    private static VisualElement activeRoot;
+
+    private VisualElement root;
     private Label pollenDandelion;
     private Label pollenTulip;
     private Label pollenSunflower;
@@ -20,51 +26,142 @@ public class GameHUDController : MonoBehaviour
     private Label waxLabel;
     private Label honeyLabel;
     private Label beeCountLabel;
-
-    // ============ Build ============
-    private Button buildHiveBtn;
     private Label buildStatusLabel;
-
-    // ============ Production ============
-    private Slider waxRatioSlider;
     private Label waxPercentLabel;
     private Label honeyPercentLabel;
     private Label conversionWorkersLabel;
+    private Label workerCollectorsLabel;
+    private Label workerScoutsLabel;
+    private Label workerDefendersLabel;
+    private Label workerAttackersLabel;
 
-    // ============ Panels & Toolbar ============
-    private Dictionary<string, VisualElement> panels;
-    private Dictionary<string, Button> toolbarButtons;
-    private string activePanel = null;
+    private Label debugBeeCountLabel;
+    private Label debugFlowerCountLabel;
+    private Label debugSearchingLabel;
+    private Label debugScoutingLabel;
+    private Label debugFlyingLabel;
+    private Label debugCollectingLabel;
+    private Label debugReturningLabel;
+    private Label debugWaitingLabel;
+    private Label debugQueueLabel;
+    private Label fpsLabel;
+    private Label selectedBeeTitle;
+    private Label selectedBeeActivity;
+    private Label selectedBeeTarget;
+    private Label selectedBeeCargo;
+    private Label selectedBeeHive;
 
-    // ============ Selected Hive ============
+    private IntegerField spawnBeesInput;
+    private IntegerField spawnFlowersInput;
+    private Button spawnBeesButton;
+    private Button spawnFlowersButton;
+    private Button reloadSceneButton;
+    private Button buildHiveButton;
+    private Button selectedHiveSchoolButton;
+    private Button selectedHiveDeployButton;
+    private Slider waxRatioSlider;
+    private Slider selectedHiveProductionSlider;
+    private Slider selectedHiveDeploySlider;
+
     private VisualElement selectedHivePanel;
-    private Label shTitle;
-    private Label shCost;
-    private Label shSliderValue;
-    private Slider shSlider;
-    
-    private Label shUneducated;
-    private Label shEducated;
-    private Button shBuildSchoolBtn;
-    
-    private Label shDeployValue;
-    private Slider shDeploySlider;
-    private Button shDeployBtn;
-    
-    private Entity selectedHiveEntity = Entity.Null;
+    private VisualElement selectedBeePanel;
+    private VisualElement beeSelectionMarker;
+    private Label selectedHiveTitle;
+    private Label selectedHiveCost;
+    private Label selectedHiveProductionValue;
+    private Label selectedHiveUneducated;
+    private Label selectedHiveEducated;
+    private Label selectedHiveDeployValue;
 
-    // ============ State ============
-    public static bool BuildModeActive { get; private set; }
+    private readonly Dictionary<string, VisualElement> panels = new Dictionary<string, VisualElement>();
+    private readonly Dictionary<string, Button> toolbarButtons = new Dictionary<string, Button>();
+    private readonly Dictionary<string, Action> toolbarCallbacks = new Dictionary<string, Action>();
+    private string activePanel;
+
+    private World gameWorld;
     private EntityManager entityManager;
-    private bool initialized;
+    private EntityQuery playerQuery;
+    private EntityQuery hiveQuery;
+    private EntityQuery beeQuery;
+    private EntityQuery activeFlowerQuery;
+    private EntityQuery regrowingFlowerQuery;
+    private EntityQuery beeSpawnerQuery;
+    private EntityQuery flowerSpawnerQuery;
+    private bool queriesInitialized;
+    private bool isReloading;
+    private float refreshTimer;
+    private float fpsElapsedTime;
+    private int fpsFrameCount;
 
-    void OnEnable()
+    private Entity selectedHiveEntity = Entity.Null;
+    private Entity selectedBeeEntity = Entity.Null;
+
+    public static bool BuildModeActive { get; private set; }
+
+    public static bool IsPointerOverUI(Vector2 screenPosition)
     {
-        var uiDoc = GetComponent<UIDocument>();
-        if (uiDoc == null) return;
-        var root = uiDoc.rootVisualElement;
+        if (activeRoot == null || activeRoot.panel == null)
+            return false;
 
-        // Resource labels
+        Vector2 panelPosition = RuntimePanelUtils.ScreenToPanel(activeRoot.panel, screenPosition);
+        VisualElement pickedElement = activeRoot.panel.Pick(panelPosition);
+        return pickedElement != null && pickedElement != activeRoot;
+    }
+
+    private void OnEnable()
+    {
+        var uiDocument = GetComponent<UIDocument>();
+        if (uiDocument == null) return;
+
+        root = uiDocument.rootVisualElement;
+        if (root == null) return;
+        root.pickingMode = PickingMode.Ignore;
+        activeRoot = root;
+
+        BindElements();
+        RegisterCallbacks();
+    }
+
+    private void OnDisable()
+    {
+        UnregisterCallbacks();
+        DisposeWorldQueries();
+        CancelBuildMode();
+        if (activeRoot == root) activeRoot = null;
+        root = null;
+    }
+
+    private void Update()
+    {
+        UpdateFps(Time.unscaledDeltaTime);
+        if (!TryInitializeWorld()) return;
+
+        HandleWorldSelection();
+        refreshTimer -= Time.unscaledDeltaTime;
+        if (refreshTimer > 0f) return;
+
+        refreshTimer = HudRefreshInterval;
+        UpdateResourcesAndActivity();
+        UpdateProductionDisplay();
+        UpdateSelectedHivePanel();
+        UpdateSelectedBeePanel();
+    }
+
+    private void UpdateFps(float unscaledDeltaTime)
+    {
+        if (fpsLabel == null || unscaledDeltaTime <= 0f) return;
+
+        fpsElapsedTime += unscaledDeltaTime;
+        fpsFrameCount++;
+        if (fpsElapsedTime < 0.5f) return;
+
+        SetLabel(fpsLabel, $"FPS: {Mathf.RoundToInt(fpsFrameCount / fpsElapsedTime)}");
+        fpsElapsedTime = 0f;
+        fpsFrameCount = 0;
+    }
+
+    private void BindElements()
+    {
         pollenDandelion = root.Q<Label>("pollen-dandelion");
         pollenTulip = root.Q<Label>("pollen-tulip");
         pollenSunflower = root.Q<Label>("pollen-sunflower");
@@ -72,205 +169,477 @@ public class GameHUDController : MonoBehaviour
         waxLabel = root.Q<Label>("wax");
         honeyLabel = root.Q<Label>("honey");
         beeCountLabel = root.Q<Label>("bee-count");
-
-        // Build
-        buildHiveBtn = root.Q<Button>("build-hive-btn");
+        buildHiveButton = root.Q<Button>("build-hive-btn");
         buildStatusLabel = root.Q<Label>("build-status");
-
-        // Production
         waxRatioSlider = root.Q<Slider>("wax-ratio-slider");
         waxPercentLabel = root.Q<Label>("wax-percent");
         honeyPercentLabel = root.Q<Label>("honey-percent");
         conversionWorkersLabel = root.Q<Label>("conversion-workers");
+        workerCollectorsLabel = root.Q<Label>("worker-collectors");
+        workerScoutsLabel = root.Q<Label>("worker-scouts");
+        workerDefendersLabel = root.Q<Label>("worker-defenders");
+        workerAttackersLabel = root.Q<Label>("worker-attackers");
 
-        // Selected Hive
+        debugBeeCountLabel = root.Q<Label>("debug-bees");
+        debugFlowerCountLabel = root.Q<Label>("debug-flowers");
+        debugSearchingLabel = root.Q<Label>("debug-searching");
+        debugScoutingLabel = root.Q<Label>("debug-scouting");
+        debugFlyingLabel = root.Q<Label>("debug-flying");
+        debugCollectingLabel = root.Q<Label>("debug-collecting");
+        debugReturningLabel = root.Q<Label>("debug-returning");
+        debugWaitingLabel = root.Q<Label>("debug-waiting");
+        debugQueueLabel = root.Q<Label>("debug-queues");
+        fpsLabel = root.Q<Label>("debug-fps");
+        spawnBeesInput = root.Q<IntegerField>("spawn-bees-input");
+        spawnFlowersInput = root.Q<IntegerField>("spawn-flowers-input");
+        spawnBeesButton = root.Q<Button>("spawn-bees-button");
+        spawnFlowersButton = root.Q<Button>("spawn-flowers-button");
+        reloadSceneButton = root.Q<Button>("reload-scene-button");
+
         selectedHivePanel = root.Q<VisualElement>("selected-hive-panel");
-        shTitle = root.Q<Label>("sh-title");
-        shCost = root.Q<Label>("sh-cost");
-        shSliderValue = root.Q<Label>("sh-slider-value");
-        shSlider = root.Q<Slider>("sh-production-slider");
-        
-        shUneducated = root.Q<Label>("sh-uneducated");
-        shEducated = root.Q<Label>("sh-educated");
-        shBuildSchoolBtn = root.Q<Button>("sh-build-school-btn");
-        
-        shDeployValue = root.Q<Label>("sh-deploy-value");
-        shDeploySlider = root.Q<Slider>("sh-deploy-slider");
-        shDeployBtn = root.Q<Button>("sh-deploy-btn");
+        selectedHiveTitle = root.Q<Label>("sh-title");
+        selectedHiveCost = root.Q<Label>("sh-cost");
+        selectedHiveProductionValue = root.Q<Label>("sh-slider-value");
+        selectedHiveProductionSlider = root.Q<Slider>("sh-production-slider");
+        selectedHiveUneducated = root.Q<Label>("sh-uneducated");
+        selectedHiveEducated = root.Q<Label>("sh-educated");
+        selectedHiveSchoolButton = root.Q<Button>("sh-build-school-btn");
+        selectedHiveDeployValue = root.Q<Label>("sh-deploy-value");
+        selectedHiveDeploySlider = root.Q<Slider>("sh-deploy-slider");
+        selectedHiveDeployButton = root.Q<Button>("sh-deploy-btn");
 
-        // Setup panels
-        panels = new Dictionary<string, VisualElement>
-        {
-            { "build",   root.Q<VisualElement>("build-panel") },
-            { "workers", root.Q<VisualElement>("workers-panel") },
-            { "laws",    root.Q<VisualElement>("laws-panel") },
-            { "trade",   root.Q<VisualElement>("trade-panel") }
-        };
+        selectedBeePanel = root.Q<VisualElement>("selected-bee-panel");
+        beeSelectionMarker = root.Q<VisualElement>("bee-selection-marker");
+        selectedBeeTitle = root.Q<Label>("selected-bee-title");
+        selectedBeeActivity = root.Q<Label>("selected-bee-activity");
+        selectedBeeTarget = root.Q<Label>("selected-bee-target");
+        selectedBeeCargo = root.Q<Label>("selected-bee-cargo");
+        selectedBeeHive = root.Q<Label>("selected-bee-hive");
 
-        // Setup toolbar buttons
-        toolbarButtons = new Dictionary<string, Button>
-        {
-            { "build",   root.Q<Button>("btn-build") },
-            { "workers", root.Q<Button>("btn-workers") },
-            { "laws",    root.Q<Button>("btn-laws") },
-            { "trade",   root.Q<Button>("btn-trade") }
-        };
+        panels.Clear();
+        panels.Add("build", root.Q<VisualElement>("build-panel"));
+        panels.Add("workers", root.Q<VisualElement>("workers-panel"));
+        panels.Add("laws", root.Q<VisualElement>("laws-panel"));
+        panels.Add("trade", root.Q<VisualElement>("trade-panel"));
 
-        // Wire toolbar button events
-        foreach (var kvp in toolbarButtons)
+        toolbarButtons.Clear();
+        toolbarButtons.Add("build", root.Q<Button>("btn-build"));
+        toolbarButtons.Add("workers", root.Q<Button>("btn-workers"));
+        toolbarButtons.Add("laws", root.Q<Button>("btn-laws"));
+        toolbarButtons.Add("trade", root.Q<Button>("btn-trade"));
+    }
+
+    private void RegisterCallbacks()
+    {
+        toolbarCallbacks.Clear();
+        foreach (var entry in toolbarButtons)
         {
-            string panelKey = kvp.Key;
-            kvp.Value.clicked += () => TogglePanel(panelKey);
+            if (entry.Value == null) continue;
+            string panelKey = entry.Key;
+            Action callback = () => TogglePanel(panelKey);
+            toolbarCallbacks.Add(panelKey, callback);
+            entry.Value.clicked += callback;
         }
 
-        // Wire build and slider events
-        if (buildHiveBtn != null)
-            buildHiveBtn.clicked += OnBuildHiveClicked;
-        if (waxRatioSlider != null)
-            waxRatioSlider.RegisterValueChangedCallback(OnWaxRatioChanged);
+        if (buildHiveButton != null) buildHiveButton.clicked += OnBuildHiveClicked;
+        if (spawnBeesButton != null) spawnBeesButton.clicked += OnSpawnBeesClicked;
+        if (spawnFlowersButton != null) spawnFlowersButton.clicked += OnSpawnFlowersClicked;
+        if (reloadSceneButton != null) reloadSceneButton.clicked += OnReloadSceneClicked;
+        if (waxRatioSlider != null) waxRatioSlider.RegisterValueChangedCallback(OnWaxRatioChanged);
+        if (selectedHiveProductionSlider != null)
+            selectedHiveProductionSlider.RegisterValueChangedCallback(OnSelectedHiveProductionChanged);
+        if (selectedHiveDeploySlider != null)
+            selectedHiveDeploySlider.RegisterValueChangedCallback(OnSelectedHiveDeployChanged);
 
-        if (shSlider != null)
+        if (selectedHiveSchoolButton != null)
         {
-            shSlider.RegisterValueChangedCallback(evt => {
-                if (selectedHiveEntity != Entity.Null && entityManager.Exists(selectedHiveEntity))
-                {
-                    var prod = entityManager.GetComponentData<HiveProduction>(selectedHiveEntity);
-                    prod.TargetBeesPer5Min = Mathf.RoundToInt(evt.newValue);
-                    entityManager.SetComponentData(selectedHiveEntity, prod);
-                    shSliderValue.text = $"Production: {prod.TargetBeesPer5Min} Bees / 5min";
-                }
-            });
+            selectedHiveSchoolButton.SetEnabled(false);
+            selectedHiveSchoolButton.text = "School (coming soon)";
         }
-        
-        if (shDeploySlider != null)
+        if (selectedHiveDeployButton != null)
         {
-            shDeploySlider.RegisterValueChangedCallback(evt => {
-                shDeployValue.text = $"Extract: {Mathf.RoundToInt(evt.newValue)} Bees";
-            });
-        }
-        
-        if (shBuildSchoolBtn != null)
-        {
-            shBuildSchoolBtn.clicked += () => {
-                Debug.Log("Build School Clicked (UI Only - Not implemented in backend)");
-            };
-        }
-        
-        if (shDeployBtn != null)
-        {
-            shDeployBtn.clicked += () => {
-                Debug.Log($"Extracting {Mathf.RoundToInt(shDeploySlider.value)} Bees (UI Only)");
-            };
+            selectedHiveDeployButton.SetEnabled(false);
+            selectedHiveDeployButton.text = "Extract Bees (coming soon)";
         }
 
-        // Disable law toggles (not yet implemented)
-        var lawToggles = root.Query<Toggle>(className: "law-check").ToList();
-        foreach (var toggle in lawToggles)
+        foreach (var toggle in root.Query<Toggle>(className: "law-check").ToList())
             toggle.SetEnabled(false);
     }
 
-    void Update()
+    private void UnregisterCallbacks()
     {
-        if (!initialized)
+        foreach (var entry in toolbarButtons)
         {
-            var world = World.DefaultGameObjectInjectionWorld;
-            if (world == null || !world.IsCreated) return;
-            entityManager = world.EntityManager;
-            initialized = true;
+            if (entry.Value != null && toolbarCallbacks.TryGetValue(entry.Key, out var callback))
+                entry.Value.clicked -= callback;
         }
+        toolbarCallbacks.Clear();
 
-        HandleHiveSelection();
-
-        UpdateResourceDisplay();
-        UpdateProductionDisplay();
+        if (buildHiveButton != null) buildHiveButton.clicked -= OnBuildHiveClicked;
+        if (spawnBeesButton != null) spawnBeesButton.clicked -= OnSpawnBeesClicked;
+        if (spawnFlowersButton != null) spawnFlowersButton.clicked -= OnSpawnFlowersClicked;
+        if (reloadSceneButton != null) reloadSceneButton.clicked -= OnReloadSceneClicked;
+        if (waxRatioSlider != null) waxRatioSlider.UnregisterValueChangedCallback(OnWaxRatioChanged);
+        if (selectedHiveProductionSlider != null)
+            selectedHiveProductionSlider.UnregisterValueChangedCallback(OnSelectedHiveProductionChanged);
+        if (selectedHiveDeploySlider != null)
+            selectedHiveDeploySlider.UnregisterValueChangedCallback(OnSelectedHiveDeployChanged);
     }
 
-    private void HandleHiveSelection()
+    private bool TryInitializeWorld()
     {
-        if (UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame && !BuildModeActive && Camera.main != null)
+        var currentWorld = World.DefaultGameObjectInjectionWorld;
+        if (currentWorld == null || !currentWorld.IsCreated)
         {
-            var cameraRay = Camera.main.ScreenPointToRay(UnityEngine.InputSystem.Mouse.current.position.ReadValue());
-            float3 clickDir = cameraRay.direction;
-            float3 clickOrigin = cameraRay.origin;
-            
-            Entity closestHive = Entity.Null;
-            float minDst = 5.0f; // max selection distance in world units
+            SetLabel(debugQueueLabel, "Waiting for simulation...");
+            return false;
+        }
 
-            var hiveQuery = entityManager.CreateEntityQuery(typeof(Unity.Transforms.LocalTransform), typeof(HiveProduction));
-            if (!hiveQuery.IsEmpty)
+        if (queriesInitialized)
+        {
+            if (gameWorld == currentWorld) return true;
+            DisposeWorldQueries();
+        }
+
+        gameWorld = currentWorld;
+        entityManager = currentWorld.EntityManager;
+        playerQuery = entityManager.CreateEntityQuery(typeof(PlayerData));
+        hiveQuery = entityManager.CreateEntityQuery(
+            typeof(HiveResources), typeof(HivePopulation), typeof(HiveProduction),
+            typeof(HiveInfrastructure), typeof(TeamData), typeof(LocalTransform));
+        beeQuery = entityManager.CreateEntityQuery(
+            typeof(BeeTaskState), typeof(BeeCarrier), typeof(TeamData),
+            typeof(HiveAssignment), typeof(LocalTransform));
+        activeFlowerQuery = entityManager.CreateEntityQuery(typeof(FlowerData), typeof(LocalTransform));
+        regrowingFlowerQuery = entityManager.CreateEntityQuery(typeof(GrowthData));
+        beeSpawnerQuery = entityManager.CreateEntityQuery(typeof(SpawnerData));
+        flowerSpawnerQuery = entityManager.CreateEntityQuery(typeof(FlowerSpawnerData));
+        queriesInitialized = true;
+        return true;
+    }
+
+    private void DisposeWorldQueries()
+    {
+        if (queriesInitialized && gameWorld != null && gameWorld.IsCreated)
+        {
+            playerQuery.Dispose();
+            hiveQuery.Dispose();
+            beeQuery.Dispose();
+            activeFlowerQuery.Dispose();
+            regrowingFlowerQuery.Dispose();
+            beeSpawnerQuery.Dispose();
+            flowerSpawnerQuery.Dispose();
+        }
+
+        queriesInitialized = false;
+        gameWorld = null;
+    }
+
+    private void HandleWorldSelection()
+    {
+        if (BuildModeActive || Camera.main == null || Mouse.current == null ||
+            !Mouse.current.leftButton.wasPressedThisFrame)
+            return;
+
+        Vector2 mousePosition = Mouse.current.position.ReadValue();
+        if (IsPointerOverUI(mousePosition)) return;
+
+        Entity pickedBee = FindBeeAtScreenPosition(mousePosition);
+        if (pickedBee != Entity.Null)
+        {
+            selectedBeeEntity = pickedBee;
+            selectedHiveEntity = Entity.Null;
+            Hide(selectedHivePanel);
+            Show(selectedBeePanel);
+            Show(beeSelectionMarker);
+            return;
+        }
+
+        selectedHiveEntity = FindHiveAlongScreenRay(mousePosition);
+        selectedBeeEntity = Entity.Null;
+        Hide(selectedBeePanel);
+        Hide(beeSelectionMarker);
+        if (selectedHiveEntity == Entity.Null)
+            Hide(selectedHivePanel);
+        else
+            Show(selectedHivePanel);
+    }
+
+    private Entity FindBeeAtScreenPosition(Vector2 mousePosition)
+    {
+        if (beeQuery.IsEmpty) return Entity.Null;
+
+        using var bees = beeQuery.ToEntityArray(Allocator.Temp);
+        float closestDistanceSq = BeeSelectionRadius * BeeSelectionRadius;
+        Entity closestBee = Entity.Null;
+
+        for (int i = 0; i < bees.Length; i++)
+        {
+            float3 worldPosition = entityManager.GetComponentData<LocalTransform>(bees[i]).Position;
+            Vector3 screenPosition = Camera.main.WorldToScreenPoint(worldPosition);
+            if (screenPosition.z <= 0f) continue;
+
+            float distanceSq = (new Vector2(screenPosition.x, screenPosition.y) - mousePosition).sqrMagnitude;
+            if (distanceSq >= closestDistanceSq) continue;
+            closestDistanceSq = distanceSq;
+            closestBee = bees[i];
+        }
+
+        return closestBee;
+    }
+
+    private Entity FindHiveAlongScreenRay(Vector2 mousePosition)
+    {
+        if (hiveQuery.IsEmpty) return Entity.Null;
+
+        Ray ray = Camera.main.ScreenPointToRay(mousePosition);
+        float closestDistance = 3f;
+        Entity closestHive = Entity.Null;
+        using var hives = hiveQuery.ToEntityArray(Allocator.Temp);
+
+        for (int i = 0; i < hives.Length; i++)
+        {
+            float3 position = entityManager.GetComponentData<LocalTransform>(hives[i]).Position;
+            float3 offset = position - (float3)ray.origin;
+            float projection = math.dot(offset, (float3)ray.direction);
+            if (projection < 0f) continue;
+
+            float distance = math.distance(position, (float3)ray.origin + (float3)ray.direction * projection);
+            if (distance >= closestDistance) continue;
+            closestDistance = distance;
+            closestHive = hives[i];
+        }
+
+        return closestHive;
+    }
+
+    private void UpdateResourcesAndActivity()
+    {
+        byte playerTeam = playerQuery.IsEmpty ? (byte)0 : playerQuery.GetSingleton<PlayerData>().TeamID;
+        float totalNectar = 0f;
+        float dandelion = 0f;
+        float tulip = 0f;
+        float sunflower = 0f;
+        float totalWax = 0f;
+        float totalHoney = 0f;
+        int playerBeeCount = 0;
+
+        using (var hives = hiveQuery.ToEntityArray(Allocator.Temp))
+        {
+            for (int i = 0; i < hives.Length; i++)
             {
-                var hives = hiveQuery.ToEntityArray(Allocator.Temp);
-                foreach(var h in hives)
+                if (entityManager.GetComponentData<TeamData>(hives[i]).TeamID != playerTeam) continue;
+                var resources = entityManager.GetComponentData<HiveResources>(hives[i]);
+                totalNectar += resources.storedNectar;
+                totalWax += resources.storedWax;
+                totalHoney += resources.storedHoney;
+                if (!entityManager.HasBuffer<PollenStorage>(hives[i])) continue;
+
+                var pollen = entityManager.GetBuffer<PollenStorage>(hives[i]);
+                for (int j = 0; j < pollen.Length; j++)
                 {
-                    float3 pos = entityManager.GetComponentData<Unity.Transforms.LocalTransform>(h).Position;
-                    // Point-to-line distance
-                    float3 w = pos - clickOrigin;
-                    float proj = Unity.Mathematics.math.dot(w, clickDir);
-                    float3 closestPoint = clickOrigin + clickDir * proj;
-                    float dst = Unity.Mathematics.math.distance(pos, closestPoint);
-                    
-                    if (dst < minDst)
+                    switch (pollen[j].Type)
                     {
-                        minDst = dst;
-                        closestHive = h;
+                        case FlowerType.Dandelion: dandelion += pollen[j].Amount; break;
+                        case FlowerType.Tulip: tulip += pollen[j].Amount; break;
+                        case FlowerType.Sunflower: sunflower += pollen[j].Amount; break;
                     }
                 }
-                hives.Dispose();
             }
-
-            selectedHiveEntity = closestHive;
-            UpdateSelectedHivePanel();
         }
+
+        int searching = 0;
+        int scouting = 0;
+        int flying = 0;
+        int collecting = 0;
+        int returning = 0;
+        int waiting = 0;
+        int defenders = 0;
+        int attackers = 0;
+        using (var bees = beeQuery.ToEntityArray(Allocator.Temp))
+        {
+            for (int i = 0; i < bees.Length; i++)
+            {
+                if (entityManager.GetComponentData<TeamData>(bees[i]).TeamID != playerTeam) continue;
+                playerBeeCount++;
+                if (entityManager.HasComponent<Defender>(bees[i])) defenders++;
+                if (entityManager.HasComponent<Attacker>(bees[i])) attackers++;
+
+                switch (entityManager.GetComponentData<BeeTaskState>(bees[i]).Activity)
+                {
+                    case BeeActivity.SearchingForFlower: searching++; break;
+                    case BeeActivity.Scouting: scouting++; break;
+                    case BeeActivity.FlyingToFlower: flying++; break;
+                    case BeeActivity.Collecting: collecting++; break;
+                    case BeeActivity.ReturningToHive: returning++; break;
+                    case BeeActivity.WaitingForFlowers:
+                    case BeeActivity.WaitingForHive: waiting++; break;
+                }
+            }
+        }
+
+        SetLabel(pollenDandelion, $"{dandelion:F0}");
+        SetLabel(pollenTulip, $"{tulip:F0}");
+        SetLabel(pollenSunflower, $"{sunflower:F0}");
+        SetLabel(nectarLabel, $"{totalNectar:F0}");
+        SetLabel(waxLabel, $"{totalWax:F0}");
+        SetLabel(honeyLabel, $"{totalHoney:F0}");
+        SetLabel(beeCountLabel, playerBeeCount.ToString());
+        SetLabel(debugBeeCountLabel, $"Bees: {playerBeeCount:N0}");
+        SetLabel(debugFlowerCountLabel,
+            $"Flowers: {activeFlowerQuery.CalculateEntityCount():N0} ready / {regrowingFlowerQuery.CalculateEntityCount():N0} regrowing");
+        SetLabel(debugSearchingLabel, $"Searching: {searching:N0}");
+        SetLabel(debugScoutingLabel, $"Scouting: {scouting:N0}");
+        SetLabel(debugFlyingLabel, $"Flying to flowers: {flying:N0}");
+        SetLabel(debugCollectingLabel, $"Collecting: {collecting:N0}");
+        SetLabel(debugReturningLabel, $"Returning to hive: {returning:N0}");
+        SetLabel(debugWaitingLabel, $"Waiting: {waiting:N0}");
+
+        SetLabel(workerCollectorsLabel, playerBeeCount.ToString("N0"));
+        SetLabel(workerScoutsLabel, scouting.ToString("N0"));
+        SetLabel(workerDefendersLabel, defenders.ToString("N0"));
+        SetLabel(workerAttackersLabel, attackers.ToString("N0"));
+
+        int queuedBees = beeSpawnerQuery.IsEmpty ? 0 : beeSpawnerQuery.GetSingleton<SpawnerData>().numOfEntities;
+        int queuedFlowers = flowerSpawnerQuery.IsEmpty ? 0 : flowerSpawnerQuery.GetSingleton<FlowerSpawnerData>().numToSpawn;
+        SetLabel(debugQueueLabel, $"Queued: {queuedBees:N0} bees, {queuedFlowers:N0} flowers");
+    }
+
+    private void UpdateProductionDisplay()
+    {
+        int totalConversionWorkers = 0;
+        byte playerTeam = playerQuery.IsEmpty ? (byte)0 : playerQuery.GetSingleton<PlayerData>().TeamID;
+        using var hives = hiveQuery.ToEntityArray(Allocator.Temp);
+        for (int i = 0; i < hives.Length; i++)
+        {
+            if (entityManager.GetComponentData<TeamData>(hives[i]).TeamID != playerTeam) continue;
+            totalConversionWorkers += entityManager.GetComponentData<HivePopulation>(hives[i]).conversionWorkers;
+        }
+        SetLabel(conversionWorkersLabel, totalConversionWorkers.ToString());
     }
 
     private void UpdateSelectedHivePanel()
     {
-        if (selectedHivePanel == null) return;
-
-        if (selectedHiveEntity != Entity.Null && entityManager.Exists(selectedHiveEntity))
+        if (selectedHiveEntity == Entity.Null || !entityManager.Exists(selectedHiveEntity) ||
+            !entityManager.HasComponent<HiveProduction>(selectedHiveEntity))
         {
-            selectedHivePanel.style.display = DisplayStyle.Flex;
-            var prod = entityManager.GetComponentData<HiveProduction>(selectedHiveEntity);
-            var pop = entityManager.GetComponentData<HivePopulation>(selectedHiveEntity);
-            var infra = entityManager.GetComponentData<HiveInfrastructure>(selectedHiveEntity);
-            
-            // Production section
-            if (shTitle != null) shTitle.text = prod.IsCapital ? "Capital Hive 👑" : "Outpost Hive";
-            if (shCost != null) shCost.text = prod.IsCapital ? "Cost per Bee: 25 Nectar" : "Cost per Bee: 50 Nectar";
-            if (shSliderValue != null) shSliderValue.text = $"Production: {prod.TargetBeesPer5Min} Bees / 5min";
-            if (shSlider != null) shSlider.SetValueWithoutNotify(prod.TargetBeesPer5Min);
-
-            // Population & Education section
-            if (shUneducated != null) shUneducated.text = $"Uneducated: {pop.uneducatedBees}";
-            if (shEducated != null) shEducated.text = $"Educated: {pop.educatedBees}";
-            
-            if (shBuildSchoolBtn != null)
-            {
-                shBuildSchoolBtn.SetEnabled(!infra.hasSchool);
-                shBuildSchoolBtn.text = infra.hasSchool ? "School Built" : "Build School (100 Wax)";
-            }
-
-            // Deployment section
-            if (shDeploySlider != null)
-            {
-                shDeploySlider.highValue = pop.educatedBees;
-                // Clamp current value if it exceeds new max
-                float clampedValue = Mathf.Clamp(shDeploySlider.value, 0, pop.educatedBees);
-                shDeploySlider.SetValueWithoutNotify(clampedValue);
-                if (shDeployValue != null) shDeployValue.text = $"Extract: {Mathf.RoundToInt(clampedValue)} Bees";
-                
-                if (shDeployBtn != null) shDeployBtn.SetEnabled(clampedValue > 0);
-            }
+            selectedHiveEntity = Entity.Null;
+            Hide(selectedHivePanel);
+            return;
         }
-        else
+
+        Show(selectedHivePanel);
+        var production = entityManager.GetComponentData<HiveProduction>(selectedHiveEntity);
+        var population = entityManager.GetComponentData<HivePopulation>(selectedHiveEntity);
+        var infrastructure = entityManager.GetComponentData<HiveInfrastructure>(selectedHiveEntity);
+        SetLabel(selectedHiveTitle, production.IsCapital ? "Capital Hive" : "Beehive");
+        SetLabel(selectedHiveCost, production.IsCapital ? "Cost per Bee: 25 Nectar" : "Cost per Bee: 50 Nectar");
+        SetLabel(selectedHiveProductionValue, $"Production: {production.TargetBeesPer5Min} Bees / 5min");
+        if (selectedHiveProductionSlider != null)
+            selectedHiveProductionSlider.SetValueWithoutNotify(production.TargetBeesPer5Min);
+        SetLabel(selectedHiveUneducated, $"Uneducated: {population.uneducatedBees}");
+        SetLabel(selectedHiveEducated, $"Educated: {population.educatedBees}");
+
+        if (selectedHiveSchoolButton != null)
         {
-            selectedHivePanel.style.display = DisplayStyle.None;
+            selectedHiveSchoolButton.SetEnabled(false);
+            selectedHiveSchoolButton.text = infrastructure.hasSchool ? "School built" : "School (coming soon)";
+        }
+
+        if (selectedHiveDeploySlider != null)
+        {
+            selectedHiveDeploySlider.highValue = math.max(1, population.educatedBees);
+            float deployCount = Mathf.Clamp(selectedHiveDeploySlider.value, 0, population.educatedBees);
+            selectedHiveDeploySlider.SetValueWithoutNotify(deployCount);
+            SetLabel(selectedHiveDeployValue, $"Extract: {Mathf.RoundToInt(deployCount)} Bees");
         }
     }
 
-    // =============================================
-    // Panel Toggle (only one open at a time)
-    // =============================================
+    private void UpdateSelectedBeePanel()
+    {
+        if (selectedBeeEntity == Entity.Null || !entityManager.Exists(selectedBeeEntity) ||
+            !entityManager.HasComponent<BeeTaskState>(selectedBeeEntity))
+        {
+            selectedBeeEntity = Entity.Null;
+            Hide(selectedBeePanel);
+            Hide(beeSelectionMarker);
+            return;
+        }
+
+        Show(selectedBeePanel);
+        var activity = entityManager.GetComponentData<BeeTaskState>(selectedBeeEntity);
+        var carrier = entityManager.GetComponentData<BeeCarrier>(selectedBeeEntity);
+        var hiveAssignment = entityManager.GetComponentData<HiveAssignment>(selectedBeeEntity);
+        float3 beePosition = entityManager.GetComponentData<LocalTransform>(selectedBeeEntity).Position;
+        UpdateBeeSelectionMarker(beePosition);
+        float pollen = 0f;
+        if (entityManager.HasBuffer<PollenStorage>(selectedBeeEntity))
+        {
+            var buffer = entityManager.GetBuffer<PollenStorage>(selectedBeeEntity);
+            for (int i = 0; i < buffer.Length; i++) pollen += buffer[i].Amount;
+        }
+
+        SetLabel(selectedBeeTitle, $"Bee #{selectedBeeEntity.Index}");
+        SetLabel(selectedBeeActivity, $"Task: {GetActivityName(activity.Activity)}");
+        SetLabel(selectedBeeTarget, DescribeBeeTarget(activity));
+        SetLabel(selectedBeeCargo,
+            $"Pollen: {pollen:F0} / {carrier.maxPollen:F0}   Nectar: {carrier.collectedNectar:F0} / {carrier.maxNectar:F0}");
+
+        string hiveText = hiveAssignment.currentHive != Entity.Null && entityManager.Exists(hiveAssignment.currentHive)
+            ? $"Hive #{hiveAssignment.currentHive.Index}"
+            : "No hive assigned";
+        SetLabel(selectedBeeHive, $"Home: {hiveText}");
+    }
+
+    private void UpdateBeeSelectionMarker(float3 worldPosition)
+    {
+        if (beeSelectionMarker == null || Camera.main == null || beeSelectionMarker.panel == null)
+            return;
+
+        Vector3 screenPosition = Camera.main.WorldToScreenPoint(worldPosition);
+        if (screenPosition.z <= 0f)
+        {
+            Hide(beeSelectionMarker);
+            return;
+        }
+
+        Vector2 panelPosition = RuntimePanelUtils.CameraTransformWorldToPanel(
+            beeSelectionMarker.panel, worldPosition, Camera.main);
+        beeSelectionMarker.style.left = panelPosition.x;
+        beeSelectionMarker.style.top = panelPosition.y;
+        Show(beeSelectionMarker);
+    }
+
+    private string DescribeBeeTarget(BeeTaskState activity)
+    {
+        if (activity.TargetEntity != Entity.Null && entityManager.Exists(activity.TargetEntity))
+        {
+            string targetKind = entityManager.HasComponent<FlowerData>(activity.TargetEntity)
+                ? "Flower"
+                : entityManager.HasComponent<HiveResources>(activity.TargetEntity) ? "Hive" : "Entity";
+            return $"Target: {targetKind} #{activity.TargetEntity.Index}";
+        }
+
+        if (activity.Activity == BeeActivity.Scouting)
+            return $"Target cell: {activity.TargetPosition.x:F0}, {activity.TargetPosition.z:F0}";
+        return "Target: none";
+    }
+
+    private static string GetActivityName(BeeActivity activity)
+    {
+        switch (activity)
+        {
+            case BeeActivity.SearchingForFlower: return "searching for a flower";
+            case BeeActivity.Scouting: return "scouting the field";
+            case BeeActivity.FlyingToFlower: return "flying to a flower";
+            case BeeActivity.Collecting: return "collecting pollen";
+            case BeeActivity.ReturningToHive: return "returning to the hive";
+            case BeeActivity.WaitingForFlowers: return "waiting for flowers";
+            case BeeActivity.WaitingForHive: return "waiting for a hive";
+            default: return "unknown";
+        }
+    }
+
     private void TogglePanel(string key)
     {
         if (activePanel == key)
@@ -280,201 +649,182 @@ public class GameHUDController : MonoBehaviour
         }
 
         CloseAllPanels();
-
-        if (panels.TryGetValue(key, out var panel) && panel != null)
-            panel.style.display = DisplayStyle.Flex;
-        if (toolbarButtons.TryGetValue(key, out var btn) && btn != null)
-            btn.AddToClassList("selected");
-
+        if (panels.TryGetValue(key, out var panel)) Show(panel);
+        if (toolbarButtons.TryGetValue(key, out var button) && button != null)
+            button.AddToClassList("selected");
         activePanel = key;
     }
 
     private void CloseAllPanels()
     {
-        foreach (var kvp in panels)
-        {
-            if (kvp.Value != null)
-                kvp.Value.style.display = DisplayStyle.None;
-        }
-        foreach (var kvp in toolbarButtons)
-        {
-            if (kvp.Value != null)
-                kvp.Value.RemoveFromClassList("selected");
-        }
+        foreach (var panel in panels.Values) Hide(panel);
+        foreach (var button in toolbarButtons.Values)
+            if (button != null) button.RemoveFromClassList("selected");
 
-        // Deactivate build mode if build panel closes
-        if (activePanel == "build" && BuildModeActive)
-        {
-            BuildModeActive = false;
-            if (buildHiveBtn != null)
-            {
-                buildHiveBtn.RemoveFromClassList("active");
-                buildHiveBtn.text = "Place";
-            }
-            SetLabel(buildStatusLabel, "");
-        }
-
+        if (activePanel == "build") CancelBuildMode();
         activePanel = null;
-    }
-
-    // =============================================
-    // Resource Display
-    // =============================================
-    private void UpdateResourceDisplay()
-    {
-        var playerQuery = entityManager.CreateEntityQuery(typeof(PlayerData));
-        if (playerQuery.IsEmpty) return;
-        var player = playerQuery.GetSingleton<PlayerData>();
-
-        var bufferQuery = entityManager.CreateEntityQuery(typeof(TeamDataElement));
-        if (bufferQuery.IsEmpty) return;
-        var bufferEntity = bufferQuery.GetSingletonEntity();
-        var teamsBuffer = entityManager.GetBuffer<TeamDataElement>(bufferEntity);
-        if (player.TeamID >= teamsBuffer.Length) return;
-        var myTeam = teamsBuffer[player.TeamID];
-
-        SetLabel(waxLabel, $"{myTeam.storedWax:F0}");
-        SetLabel(honeyLabel, $"{myTeam.storedHoney:F0}");
-        SetLabel(beeCountLabel, $"{myTeam.BeeCount}");
-
-        float totalNectar = 0f;
-        float[] pollenTotals = new float[3];
-
-        var hiveQuery = entityManager.CreateEntityQuery(typeof(HiveResources), typeof(TeamData));
-        var hiveEntities = hiveQuery.ToEntityArray(Allocator.Temp);
-
-        for (int h = 0; h < hiveEntities.Length; h++)
-        {
-            var team = entityManager.GetComponentData<TeamData>(hiveEntities[h]);
-            if (team.TeamID != player.TeamID) continue;
-
-            var resources = entityManager.GetComponentData<HiveResources>(hiveEntities[h]);
-            totalNectar += resources.storedNectar;
-
-            if (entityManager.HasBuffer<PollenStorage>(hiveEntities[h]))
-            {
-                var pollenBuffer = entityManager.GetBuffer<PollenStorage>(hiveEntities[h]);
-                for (int i = 0; i < pollenBuffer.Length && i < pollenTotals.Length; i++)
-                    pollenTotals[i] += pollenBuffer[i].Amount;
-            }
-        }
-        hiveEntities.Dispose();
-
-        SetLabel(pollenDandelion, $"{pollenTotals[0]:F0}");
-        SetLabel(pollenTulip, $"{pollenTotals[1]:F0}");
-        SetLabel(pollenSunflower, $"{pollenTotals[2]:F0}");
-        SetLabel(nectarLabel, $"{totalNectar:F0}");
-    }
-
-    // =============================================
-    // Production Display
-    // =============================================
-    private void UpdateProductionDisplay()
-    {
-        var playerQuery = entityManager.CreateEntityQuery(typeof(PlayerData));
-        if (playerQuery.IsEmpty) return;
-        var player = playerQuery.GetSingleton<PlayerData>();
-
-        int totalConversionWorkers = 0;
-
-        var hiveQuery = entityManager.CreateEntityQuery(typeof(HivePopulation), typeof(TeamData));
-        var hiveEntities = hiveQuery.ToEntityArray(Allocator.Temp);
-
-        for (int i = 0; i < hiveEntities.Length; i++)
-        {
-            var team = entityManager.GetComponentData<TeamData>(hiveEntities[i]);
-            if (team.TeamID != player.TeamID) continue;
-
-            var pop = entityManager.GetComponentData<HivePopulation>(hiveEntities[i]);
-            totalConversionWorkers += pop.conversionWorkers;
-        }
-        hiveEntities.Dispose();
-
-        SetLabel(conversionWorkersLabel, $"{totalConversionWorkers}");
-    }
-
-    // =============================================
-    // Build Mode
-    // =============================================
-    public void CancelBuildMode()
-    {
-        if (BuildModeActive)
-        {
-            BuildModeActive = false;
-            if (buildHiveBtn != null)
-            {
-                buildHiveBtn.RemoveFromClassList("active");
-                buildHiveBtn.text = "Build Hive";
-            }
-            SetLabel(buildStatusLabel, "");
-        }
     }
 
     private void OnBuildHiveClicked()
     {
-        BuildModeActive = !BuildModeActive;
-
-        if (buildHiveBtn != null)
+        if (BuildModeActive)
         {
-            if (BuildModeActive)
-            {
-                buildHiveBtn.AddToClassList("active");
-                buildHiveBtn.text = "Cancel";
-                SetLabel(buildStatusLabel, "Click on the ground to place a hive");
-            }
-            else
-            {
-                CancelBuildMode();
-            }
+            CancelBuildMode();
+            return;
         }
+
+        BuildModeActive = true;
+        if (buildHiveButton != null)
+        {
+            buildHiveButton.AddToClassList("active");
+            buildHiveButton.text = "Cancel";
+        }
+        SetLabel(buildStatusLabel, "Click the ground to place a hive");
     }
 
-    // =============================================
-    // Wax / Honey Ratio
-    // =============================================
+    public void CancelBuildMode()
+    {
+        BuildModeActive = false;
+        if (buildHiveButton != null)
+        {
+            buildHiveButton.RemoveFromClassList("active");
+            buildHiveButton.text = "Place";
+        }
+        SetLabel(buildStatusLabel, string.Empty);
+    }
+
+    private void OnSpawnBeesClicked()
+    {
+        if (!queriesInitialized)
+        {
+            SetLabel(debugQueueLabel, "Simulation is still starting");
+            return;
+        }
+        if (beeSpawnerQuery.IsEmpty)
+        {
+            SetLabel(debugQueueLabel, "Bee spawner is missing from the scene");
+            return;
+        }
+
+        int requested = Mathf.Clamp(spawnBeesInput != null ? spawnBeesInput.value : 1000, 1, MaxQueuedSpawns);
+        Entity spawnerEntity = beeSpawnerQuery.GetSingletonEntity();
+        var spawner = entityManager.GetComponentData<SpawnerData>(spawnerEntity);
+        int accepted = Mathf.Min(requested, MaxQueuedSpawns - spawner.numOfEntities);
+        if (accepted <= 0)
+        {
+            SetLabel(debugQueueLabel, "Bee spawn queue is full");
+            return;
+        }
+
+        spawner.numOfEntities += accepted;
+        entityManager.SetComponentData(spawnerEntity, spawner);
+        SetLabel(debugQueueLabel, $"Queued {accepted:N0} bees");
+    }
+
+    private void OnSpawnFlowersClicked()
+    {
+        if (!queriesInitialized)
+        {
+            SetLabel(debugQueueLabel, "Simulation is still starting");
+            return;
+        }
+        if (flowerSpawnerQuery.IsEmpty)
+        {
+            SetLabel(debugQueueLabel, "Flower spawner is missing from the scene");
+            return;
+        }
+
+        int requested = Mathf.Clamp(spawnFlowersInput != null ? spawnFlowersInput.value : 1000, 1, MaxQueuedSpawns);
+        Entity spawnerEntity = flowerSpawnerQuery.GetSingletonEntity();
+        var spawner = entityManager.GetComponentData<FlowerSpawnerData>(spawnerEntity);
+        int accepted = Mathf.Min(requested, MaxQueuedSpawns - spawner.numToSpawn);
+        if (accepted <= 0)
+        {
+            SetLabel(debugQueueLabel, "Flower spawn queue is full");
+            return;
+        }
+
+        spawner.numToSpawn += accepted;
+        entityManager.SetComponentData(spawnerEntity, spawner);
+        SetLabel(debugQueueLabel, $"Queued {accepted:N0} flowers");
+    }
+
+    private void OnReloadSceneClicked()
+    {
+        if (isReloading) return;
+
+        var activeScene = SceneManager.GetActiveScene();
+        if (!activeScene.IsValid()) return;
+
+        isReloading = true;
+        if (reloadSceneButton != null) reloadSceneButton.SetEnabled(false);
+        CancelBuildMode();
+
+        StartCoroutine(ReloadSceneAfterCurrentFrame(activeScene.buildIndex, activeScene.path));
+    }
+
+    private IEnumerator ReloadSceneAfterCurrentFrame(int buildIndex, string scenePath)
+    {
+        yield return null;
+
+        var world = World.DefaultGameObjectInjectionWorld;
+        if (world != null && world.IsCreated)
+            world.EntityManager.CompleteAllTrackedJobs();
+
+        if (buildIndex >= 0)
+            SceneManager.LoadSceneAsync(buildIndex, LoadSceneMode.Single);
+        else if (!string.IsNullOrEmpty(scenePath))
+            SceneManager.LoadSceneAsync(scenePath, LoadSceneMode.Single);
+    }
+
     private void OnWaxRatioChanged(ChangeEvent<float> evt)
     {
-        float ratio = evt.newValue;
-        int waxPct = Mathf.RoundToInt(ratio * 100);
+        int waxPercent = Mathf.RoundToInt(evt.newValue * 100f);
+        SetLabel(waxPercentLabel, $"Wax {waxPercent}%");
+        SetLabel(honeyPercentLabel, $"Honey {100 - waxPercent}%");
+        UpdateAllHivesWaxRatio(evt.newValue);
+    }
 
-        SetLabel(waxPercentLabel, $"Wax {waxPct}%");
-        SetLabel(honeyPercentLabel, $"Honey {100 - waxPct}%");
-        UpdateAllHivesWaxRatio(ratio);
+    private void OnSelectedHiveProductionChanged(ChangeEvent<float> evt)
+    {
+        if (selectedHiveEntity == Entity.Null || !entityManager.Exists(selectedHiveEntity)) return;
+        var production = entityManager.GetComponentData<HiveProduction>(selectedHiveEntity);
+        production.TargetBeesPer5Min = Mathf.RoundToInt(evt.newValue);
+        entityManager.SetComponentData(selectedHiveEntity, production);
+        SetLabel(selectedHiveProductionValue, $"Production: {production.TargetBeesPer5Min} Bees / 5min");
+    }
+
+    private void OnSelectedHiveDeployChanged(ChangeEvent<float> evt)
+    {
+        SetLabel(selectedHiveDeployValue, $"Extract: {Mathf.RoundToInt(evt.newValue)} Bees");
     }
 
     private void UpdateAllHivesWaxRatio(float ratio)
     {
-        var playerQuery = entityManager.CreateEntityQuery(typeof(PlayerData));
-        if (playerQuery.IsEmpty) return;
-        var player = playerQuery.GetSingleton<PlayerData>();
-
-        var hiveQuery = entityManager.CreateEntityQuery(typeof(HiveResources), typeof(TeamData));
-        var hiveEntities = hiveQuery.ToEntityArray(Allocator.Temp);
-
-        for (int i = 0; i < hiveEntities.Length; i++)
+        if (!queriesInitialized) return;
+        byte playerTeam = playerQuery.IsEmpty ? (byte)0 : playerQuery.GetSingleton<PlayerData>().TeamID;
+        using var hives = hiveQuery.ToEntityArray(Allocator.Temp);
+        for (int i = 0; i < hives.Length; i++)
         {
-            var team = entityManager.GetComponentData<TeamData>(hiveEntities[i]);
-            if (team.TeamID != player.TeamID) continue;
-
-            var resources = entityManager.GetComponentData<HiveResources>(hiveEntities[i]);
+            if (entityManager.GetComponentData<TeamData>(hives[i]).TeamID != playerTeam) continue;
+            var resources = entityManager.GetComponentData<HiveResources>(hives[i]);
             resources.waxRatio = ratio;
-            entityManager.SetComponentData(hiveEntities[i], resources);
+            entityManager.SetComponentData(hives[i], resources);
         }
-        hiveEntities.Dispose();
     }
 
-    // =============================================
-    // Helpers
-    // =============================================
-    private void SetLabel(Label label, string text)
+    private static void Show(VisualElement element)
     {
-        if (label != null) label.text = text;
+        if (element != null) element.RemoveFromClassList("hidden");
     }
 
-    void OnDisable()
+    private static void Hide(VisualElement element)
     {
-        BuildModeActive = false;
-        if (buildHiveBtn != null)
-            buildHiveBtn.clicked -= OnBuildHiveClicked;
+        if (element != null) element.AddToClassList("hidden");
+    }
+
+    private static void SetLabel(Label label, string value)
+    {
+        if (label != null) label.text = value;
     }
 }

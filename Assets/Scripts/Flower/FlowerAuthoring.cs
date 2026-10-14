@@ -20,6 +20,8 @@ public class FlowerAuthoring : MonoBehaviour
             {
                 pollen =  FlowerTypeInfo.GetPollen(authoring.type),
                 type = authoring.type, 
+                nectar = FlowerTypeInfo.GetNectar(authoring.type),
+                owner = Entity.Null
             });
             AddComponent(entity, new GrowthData
             {

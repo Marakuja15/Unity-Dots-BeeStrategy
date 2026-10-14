@@ -12,7 +12,7 @@ public class BeeHiveAuthoring : MonoBehaviour
         public override void Bake(BeeHiveAuthoring authoring)
         {
             var entity = GetEntity(TransformUsageFlags.Dynamic);
-            AddComponent(entity, new HiveResources());
+            AddComponent(entity, new HiveResources { waxRatio = 0.5f });
             AddComponent(entity, new HivePopulation
             {
                 defenders = authoring.cityDefenders,

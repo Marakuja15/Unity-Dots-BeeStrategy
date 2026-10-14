@@ -19,14 +19,27 @@ public class FlowerSpawnerAuthoring : MonoBehaviour
 
             if (authoring.floorPrefab != null)
             {
-                Vector3 floorPos = authoring.floorPrefab.transform.position;
-                Vector3 floorScale = authoring.floorPrefab.transform.localScale;
-                
-                float halfX = floorScale.x / 2f;
-                float halfZ = floorScale.z / 2f;
+                var floorRenderer = authoring.floorPrefab.GetComponent<Renderer>();
+                if (floorRenderer != null)
+                {
+                    Bounds floorBounds = floorRenderer.bounds;
+                    calculatedLeft = new float3(floorBounds.min.x, 0f, floorBounds.min.z);
+                    calculatedRight = new float3(floorBounds.max.x, 0f, floorBounds.max.z);
+                }
+                else
+                {
+                    var meshFilter = authoring.floorPrefab.GetComponent<MeshFilter>();
+                    Vector3 localSize = meshFilter != null && meshFilter.sharedMesh != null
+                        ? meshFilter.sharedMesh.bounds.size
+                        : Vector3.one;
+                    Vector3 floorPos = authoring.floorPrefab.transform.position;
+                    Vector3 worldScale = authoring.floorPrefab.transform.lossyScale;
+                    float halfX = localSize.x * Mathf.Abs(worldScale.x) * 0.5f;
+                    float halfZ = localSize.z * Mathf.Abs(worldScale.z) * 0.5f;
 
-                calculatedLeft = new float3(floorPos.x - halfX, 0, floorPos.z - halfZ);
-                calculatedRight = new float3(floorPos.x + halfX, 0, floorPos.z + halfZ);
+                    calculatedLeft = new float3(floorPos.x - halfX, 0f, floorPos.z - halfZ);
+                    calculatedRight = new float3(floorPos.x + halfX, 0f, floorPos.z + halfZ);
+                }
             }
 
             AddComponent(entity, new FlowerSpawnerData

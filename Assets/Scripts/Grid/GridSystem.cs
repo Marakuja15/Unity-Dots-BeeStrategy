@@ -35,7 +35,7 @@ public partial class GridSystem : SystemBase
 
         gridData.Grid.Clear();
         gridData.FlowerPositions.Clear();
-        int cellSize = SystemAPI.GetSingleton<GridSystemData>().cellSize;
+        int cellSize = math.max(1, SystemAPI.GetSingleton<GridSystemData>().cellSize);
    
         int flowerCount = 0;
         foreach (var _ in SystemAPI.Query<RefRO<FlowerData>>())

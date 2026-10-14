@@ -471,3 +471,158 @@
     -unity-font-style: bold;
     -unity-text-align: middle-center;
 }
+
+/* ==========================================
+   LIVE SIMULATION PANEL
+   ========================================== */
+.debug-panel {
+    position: absolute;
+    left: 16px;
+    top: 64px;
+    width: 300px;
+    padding: 12px;
+    background-color: rgba(255, 248, 225, 0.96);
+    border-radius: 12px;
+    border-width: 2px;
+    border-color: #8B6914;
+}
+
+.debug-title {
+    color: #4E342E;
+    font-size: 16px;
+    -unity-font-style: bold;
+    margin-bottom: 6px;
+}
+
+.debug-tools {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.debug-fps {
+    color: #3E2723;
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+.debug-reload-button {
+    padding: 4px 10px;
+    background-color: #E8A817;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: #A67C00;
+    color: #3E2723;
+    -unity-font-style: bold;
+}
+
+.debug-reload-button:hover {
+    background-color: #F0C040;
+}
+
+.debug-reload-button:active {
+    background-color: #C8960C;
+}
+
+.debug-line {
+    color: #5D4037;
+    font-size: 12px;
+    margin-bottom: 2px;
+}
+
+.debug-total {
+    color: #3E2723;
+    font-size: 14px;
+    -unity-font-style: bold;
+}
+
+.debug-separator {
+    height: 1px;
+    background-color: rgba(139, 105, 20, 0.35);
+    margin-top: 7px;
+    margin-bottom: 7px;
+}
+
+.debug-subtitle {
+    color: #795548;
+    font-size: 12px;
+    -unity-font-style: bold;
+    margin-bottom: 4px;
+}
+
+.spawn-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 3px;
+}
+
+.spawn-input {
+    flex-grow: 1;
+    min-width: 0;
+    color: #4E342E;
+    background-color: #FFFDF5;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: #BCAAA4;
+    padding: 2px 5px;
+}
+
+.spawn-input .unity-base-field__label {
+    min-width: 52px;
+    color: #795548;
+    font-size: 11px;
+}
+
+.debug-button {
+    min-width: 48px;
+    margin-left: 6px;
+    padding: 4px 10px;
+    background-color: #E8A817;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: #A67C00;
+    color: #3E2723;
+    -unity-font-style: bold;
+}
+
+.debug-button:hover {
+    background-color: #F0C040;
+}
+
+.debug-queue {
+    color: #558B2F;
+    font-size: 11px;
+    -unity-font-style: bold;
+    margin-top: 4px;
+}
+
+.debug-hint {
+    color: #8D6E63;
+    font-size: 10px;
+    -unity-font-style: italic;
+    margin-top: 4px;
+}
+
+.bee-inspector {
+    width: 290px;
+}
+
+.bee-selection-marker {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    translate: -50% -50%;
+    border-radius: 12px;
+    border-width: 3px;
+    border-color: #D32F2F;
+    background-color: rgba(255, 213, 79, 0.2);
+}
+
+.sh-label-spacing {
+    margin-top: 5px;
+}
+
+.hidden {
+    display: none;
+}

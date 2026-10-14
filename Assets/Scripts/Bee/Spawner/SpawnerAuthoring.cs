@@ -8,6 +8,7 @@ public class SpawnerAuthoring : MonoBehaviour
     public GameObject prefab;
 
     public uint randomSeed = 1;
+    public int initialBees = 300;
     public Vector3 min;
     public Vector3 max;
     // Baker ukryty wewnątrz klasy Authoring dla porządku
@@ -24,6 +25,7 @@ public class SpawnerAuthoring : MonoBehaviour
                prefab = GetEntity(authoring.prefab, TransformUsageFlags.Dynamic),
             
                random = new Unity.Mathematics.Random(authoring.randomSeed),
+               numOfEntities = math.max(0, authoring.initialBees),
                min = authoring.min,
                max = authoring.max
             });

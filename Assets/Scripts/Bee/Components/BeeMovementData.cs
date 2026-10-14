@@ -17,3 +17,21 @@ public struct BeeMovementData : IComponentData, IEnableableComponent
    
 
 }
+
+public enum BeeActivity : byte
+{
+    SearchingForFlower,
+    Scouting,
+    FlyingToFlower,
+    Collecting,
+    ReturningToHive,
+    WaitingForFlowers,
+    WaitingForHive
+}
+
+public struct BeeTaskState : IComponentData
+{
+    public BeeActivity Activity;
+    public Entity TargetEntity;
+    public float3 TargetPosition;
+}
